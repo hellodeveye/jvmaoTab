@@ -84,6 +84,7 @@ const ProviderCard = observer((props) => {
       id={provider.id}
       title={provider.title}
       tint={provider.tint}
+      accent={provider.accent}
       consoleUrl={provider.consoleUrl}
       size={provider.size}
       format={provider.format}

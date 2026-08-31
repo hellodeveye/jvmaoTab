@@ -127,8 +127,9 @@ const BarFill = styled.div`
   height: 100%;
   border-radius: inherit;
   width: ${(props) => props.$percent}%;
+  /* 没有品牌强调色的卡片退回白色，不去编一个 */
   background: ${(props) =>
-    props.$alert ? "#ffd2cd" : "rgba(255, 255, 255, 0.88)"};
+    props.$alert ? "#ffd2cd" : "var(--widget-accent, rgba(255, 255, 255, 0.88))"};
 `;
 
 const BarValue = styled.span`
@@ -183,7 +184,7 @@ const LinkIcon = styled.a`
  * 里面的倒计时才会随 tick 自己走字。
  */
 const QuotaCard = (props) => {
-  const { id, title, tint, consoleUrl, size, position, state, loading, format, stickled, onRefresh } =
+  const { id, title, tint, accent, consoleUrl, size, position, state, loading, format, stickled, onRefresh } =
     props;
   const box = widgetSize(size);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -269,6 +270,7 @@ const QuotaCard = (props) => {
         willChange: isDragging ? "transform" : "auto",
         "--frost-shift": `translate(${-(origin.left + tx)}px, ${-(origin.top + ty)}px)`,
         "--frost-tint": tint,
+        "--widget-accent": accent,
       }}
     >
       <Frost />

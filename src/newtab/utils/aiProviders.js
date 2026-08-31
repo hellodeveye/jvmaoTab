@@ -73,10 +73,11 @@ export const AI_PROVIDERS = [
     placeholder: "sk-kimi-xxxxxxxxxxxx",
     consoleUrl: KIMI_CONSOLE_URL,
     quota: kimiQuota,
-    /* Kimi 官网只有暖白 #fbfaf9 与墨黑 #121212，本身就是黑白灰识别体系、没有饱和
-       主色，所以用墨灰而不是编一个假的品牌色，正好和 DeepSeek 蓝拉开区分。 */
+    /* Kimi 官网是暖白 #fbfaf9 配墨黑 #121212，黑白灰识别体系、没有饱和主色，
+       所以用墨灰而不是编一个假的品牌色。偏暖（r>g>b）：一来贴合它那个暖白，
+       二来和 Factory 的中性近黑分得开——两张都是深色卡，靠冷暖区分。 */
     tint: tint(
-      "linear-gradient(158deg, rgba(38, 35, 43, 0.72) 0%, rgba(26, 24, 30, 0.66) 52%, rgba(33, 31, 38, 0.7) 100%)"
+      "linear-gradient(158deg, rgba(48, 43, 38, 0.7) 0%, rgba(36, 32, 28, 0.64) 52%, rgba(43, 38, 34, 0.68) 100%)"
     ),
     size: "small",
     format: (data) =>
@@ -95,10 +96,14 @@ export const AI_PROVIDERS = [
     placeholder: "fk-xxxxxxxxxxxx",
     consoleUrl: FACTORY_CONSOLE_URL,
     quota: factoryQuota,
-    /* Factory 品牌色 #d15010，取自官网（出现最频繁的那个）。 */
+    /* Factory 是「黑白 + 橙色强调」：官网设计 token 里底色是
+       --dark-base-primary #020202 / --dark-base-secondary #101010，
+       橙色 --accent-100 #ef6f2e 只出现在文字、边框和小色块上，不做底色。
+       所以卡片用近黑底，橙色留给强调元素（这里是三条进度条）。 */
     tint: tint(
-      "linear-gradient(158deg, rgba(209, 80, 16, 0.74) 0%, rgba(186, 68, 12, 0.68) 52%, rgba(198, 76, 20, 0.72) 100%)"
+      "linear-gradient(158deg, rgba(16, 16, 16, 0.8) 0%, rgba(2, 2, 2, 0.74) 52%, rgba(12, 12, 12, 0.78) 100%)"
     ),
+    accent: "#ef6f2e",
     /* 三个滚动窗口值得各占一条进度条，中卡的横向空间才用在了信息量上，
        而不是把同一行文案拉宽。 */
     size: "medium",
