@@ -10,6 +10,7 @@ import PreferencesData from "./data"
 import SystemData from "./system"
 import Sync from "./sync"
 import PreferencesAI from "./ai"
+import PreferencesWidgets from "./widgets"
 
 
 const Wrap = styled.div`
@@ -48,23 +49,30 @@ const options = [
   }, {
     label: 'AI',
     value: 'ai',
+  }, {
+    label: '小组件',
+    value: 'widgets',
   }
 ]
 
+/* 存组件而不是元素：组件库要能把用户跳到「AI」页去填密钥，
+   得往下传 onNavigate，元素常量做不到这件事。 */
 const content = {
-  wallpaper: <PreferencesBG />,
-  search: <PreferencesSo />,
-  drawer: <PreferencesLink />,
-  data: <PreferencesData />,
-  system: <SystemData />,
-  sync: <Sync />,
-  ai: <PreferencesAI />,
+  wallpaper: PreferencesBG,
+  search: PreferencesSo,
+  drawer: PreferencesLink,
+  data: PreferencesData,
+  system: SystemData,
+  sync: Sync,
+  ai: PreferencesAI,
+  widgets: PreferencesWidgets,
 }
 
 const Preferences = () => {
   const { tools, option } = useStores();
   const [activeType, setActiveType] = React.useState('wallpaper');
   const { systemTheme } = option.item;
+  const ActivePanel = content[activeType];
 
   const getSystemTheme = React.useCallback(() => {
     if (option && typeof option.getSystemTheme === 'function') {
@@ -103,7 +111,7 @@ const Preferences = () => {
             value={activeType} onChange={setActiveType}
           />
         </NavWrap>
-        {content[activeType] || null}
+        {ActivePanel ? <ActivePanel onNavigate={setActiveType} /> : null}
       </Wrap>
     </Modal>
   );

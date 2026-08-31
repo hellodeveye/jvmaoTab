@@ -1,5 +1,4 @@
 import { formatCountdown } from "./timeText";
-import { stackDefaultPositions } from "./aiWidgetSizes";
 import {
   deepseekQuota,
   currencySymbol,
@@ -61,6 +60,7 @@ export const AI_PROVIDERS = [
       "linear-gradient(158deg, rgba(77, 107, 254, 0.74) 0%, rgba(63, 92, 236, 0.68) 52%, rgba(79, 112, 220, 0.72) 100%)"
     ),
     size: "small",
+    summary: "账户总余额，赠金 + 充值",
     format: (data) => ({
       prefix: currencySymbol(data.currency),
       value: data.totalBalance.toFixed(2),
@@ -86,6 +86,7 @@ export const AI_PROVIDERS = [
       "linear-gradient(158deg, rgba(48, 43, 38, 0.7) 0%, rgba(36, 32, 28, 0.64) 52%, rgba(43, 38, 34, 0.68) 100%)"
     ),
     size: "small",
+    summary: "Coding Plan 滚动窗口用量与重置倒计时",
     format: (data) =>
       usageView(data.windowPercent ?? data.weeklyPercent, formatCountdown(data.windowReset), [
         percentPart("周", data.weeklyPercent),
@@ -114,6 +115,7 @@ export const AI_PROVIDERS = [
     /* 三个滚动窗口值得各占一条进度条，中卡的横向空间才用在了信息量上，
        而不是把同一行文案拉宽。 */
     size: "medium",
+    summary: "5 小时 / 周 / 月 三档用量进度",
     format: (data) => ({
       ...usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), []),
       bars: [
@@ -130,6 +132,3 @@ export const AI_PROVIDERS = [
 
 /** 密钥字段从目录派生，避免「加了 provider 忘了加键」 */
 export const AI_OPTION_KEYS = AI_PROVIDERS.map((provider) => provider.optionKey);
-
-/** 默认坐标同样从目录派生：右上角起按各卡高度排成一列 */
-export const AI_DEFAULT_POSITIONS = stackDefaultPositions(AI_PROVIDERS);

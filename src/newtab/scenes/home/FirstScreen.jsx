@@ -12,7 +12,7 @@ import HomeLinkList from "./HomeLinkList";
 import HomeBgLayer from "./HomeBgLayer";
 import HomeSearch from "~/components/HomeSearch";
 import Clock from "~/components/Clock";
-import AiWidgets from "~/components/AiWidgets";
+import WidgetLayer from "~/widgets/WidgetLayer";
 import Wordmark from "~/components/Wordmark";
 import _ from "lodash";
 
@@ -501,7 +501,7 @@ const FirstScreen = (props) => {
           </ClockContent>
         </ClockWrap>
       ) : null}
-      <AiWidgets stickled={unlock || home.isBg2} frostStyle={frostStyle} />
+      <WidgetLayer stickled={unlock || home.isBg2} frostStyle={frostStyle} />
       {!unlock ? (
         <SearchWrap
           initial={{ ...searchPosition, opacity: 0 }}

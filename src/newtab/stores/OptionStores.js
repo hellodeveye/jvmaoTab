@@ -20,6 +20,8 @@ import {
   clearLocalOptions,
   stripLocalOptionRows,
 } from "./localOptions";
+import { toPlainPositions } from "~/utils/homeLinkLayout";
+import { AI_PROVIDERS } from "~/utils/aiProviders";
 import { browserApi, getLastError } from "@/utils/browser";
 
 const localStorageKeys = ['bgType', 'bg2Type', 'bgBase64', 'bg2Base64', 'webdavVersion'];
@@ -39,7 +41,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 20;
+const v = 21;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -133,7 +135,14 @@ const updateOptions = {
   },
   20: {
     // 各 AI 额度卡片锚在视口右上角的坐标：{ [provider]: { right, top } }
+    // v21 起改名为 widgetPositions，这里保留定义只为让 20 → 21 的迁移能读到旧值
     aiWidgetPositions: {},
+  },
+  21: {
+    // 已添加到首屏的组件 id，顺序即添加顺序
+    widgetIds: [],
+    // 各组件锚在视口右上角的坐标：{ [widgetId]: { right, top } }
+    widgetPositions: {},
   },
 }
 
@@ -321,6 +330,24 @@ export default class OptionStores {
   update(_v, home_id) {
     try {
       const defaultOption = this.getNewOptionToValue(_v, this.item);
+
+      // v20 → v21：组件层从「AI 专属」泛化成通用组件层。
+      if (_v < 21) {
+        // 坐标键 aiWidgetPositions → widgetPositions，把用户拖过的位置带过来，
+        // 升级后卡片不会跳回默认位。转成纯对象再写：MobX 的 Proxy 进不了
+        // IndexedDB 的结构化克隆。
+        if (this.item.aiWidgetPositions) {
+          defaultOption.widgetPositions = toPlainPositions(
+            this.item.aiWidgetPositions,
+            ["right", "top"]
+          );
+        }
+        // v20 时代只要配了密钥卡片就自动上屏；改成组件库显式添加之后，
+        // 把当时屏上确实有的那几张如实固化成列表，升级后首屏不变。
+        defaultOption.widgetIds = AI_PROVIDERS.filter(
+          (provider) => this.item[provider.optionKey]
+        ).map((provider) => provider.id);
+      }
 
       sendRuntimeMessage("getOption").then((response) => {
 

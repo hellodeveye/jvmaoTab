@@ -55,6 +55,13 @@ export const WIDGET_METRICS = {
 
 export const DEFAULT_SIZE = "small";
 
+/** 组件库里给尺寸档的中文标签 */
+export const SIZE_LABELS = {
+  small: "小",
+  medium: "中",
+  large: "大",
+};
+
 export function widgetSize(name) {
   return WIDGET_SIZES[name] || WIDGET_SIZES[DEFAULT_SIZE];
 }
