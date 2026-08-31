@@ -3,8 +3,9 @@ import styled from "styled-components";
 import { widgetSize, WIDGET_METRICS as M } from "./sizes";
 import { scheme } from "./WidgetCard";
 
-/** 组件库里的缩略图按真实卡片等比缩，尺寸档的差别才看得出来 */
-const PREVIEW_SCALE = 0.5;
+/** 组件库里的缩略图按真实卡片等比缩，尺寸档的差别才看得出来。
+    0.62 是让最宽的中卡（282px）刚好落在栅格一格的内容宽里 */
+export const PREVIEW_SCALE = 0.62;
 const s = (n) => Math.round(n * PREVIEW_SCALE);
 
 /* 首屏上卡片的材质是半透明的、压在预模糊壁纸上；设置弹窗里没有壁纸，

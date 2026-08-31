@@ -35,7 +35,7 @@ export function checkAvailable(definition, item) {
     (field) => field.required && !hasValue(settingValue(field, item))
   );
   if (missing.length === 0) return { ok: true };
-  return { ok: false, reason: `需先填写${missing.map((f) => f.label).join(" / ")}` };
+  return { ok: false, reason: `需先填写 ${missing.map((f) => f.label).join(" / ")}` };
 }
 
 /** 组件有没有可填的东西——决定首选项里要不要给「设置」入口 */
