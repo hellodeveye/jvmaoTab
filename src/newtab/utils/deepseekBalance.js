@@ -1,7 +1,5 @@
 import Storage from "~/utils/storage";
 
-const storage = new Storage();
-
 export const DEEPSEEK_BALANCE_URL = "https://api.deepseek.com/user/balance";
 export const DEEPSEEK_CONSOLE_URL = "https://platform.deepseek.com/usage";
 
@@ -80,7 +78,7 @@ export async function fetchDeepseekBalance(apiKey) {
 
 async function readCache() {
   try {
-    const row = await storage.get(CACHE_KEY);
+    const row = await Storage.get(CACHE_KEY);
     return row?.value || null;
   } catch (err) {
     console.error("读取余额缓存失败:", err);
@@ -90,14 +88,14 @@ async function readCache() {
 
 async function writeCache(payload) {
   try {
-    await storage.set(CACHE_KEY, { value: payload });
+    await Storage.set(CACHE_KEY, { value: payload });
   } catch (err) {
     console.error("写入余额缓存失败:", err);
   }
 }
 
 export function clearDeepseekBalanceCache() {
-  return storage.remove(CACHE_KEY).catch(() => {});
+  return Storage.remove(CACHE_KEY).catch(() => {});
 }
 
 /**
