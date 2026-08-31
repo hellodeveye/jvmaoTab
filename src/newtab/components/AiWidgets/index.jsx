@@ -78,6 +78,25 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+/* option.item 取回的是 MobX observable，嵌套对象是 Proxy。展开只解一层，
+   其余 provider 仍是 Proxy，写进 IndexedDB 会因无法结构化克隆而整次失败——
+   现象是「只有最后拖的那个能存」。homeLinkPositions 的 toPlainPositions 同理。 */
+function toPlainPositions(raw) {
+  if (!raw || typeof raw !== "object") return {};
+  const plain = {};
+  Object.keys(raw).forEach((key) => {
+    const position = raw[key];
+    if (
+      position &&
+      Number.isFinite(position.right) &&
+      Number.isFinite(position.top)
+    ) {
+      plain[key] = { right: position.right, top: position.top };
+    }
+  });
+  return plain;
+}
+
 function formatPercentPart(label, percent) {
   if (percent === null || percent === undefined) return null;
   return `${label} ${Math.round(percent)}%`;
@@ -153,14 +172,15 @@ const AiWidgets = (props) => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const stored = option.item.aiWidgetPositions;
+  const stored = React.useMemo(
+    () => toPlainPositions(option.item.aiWidgetPositions),
+    [option.item.aiWidgetPositions]
+  );
   const positions = React.useMemo(() => {
     const width = viewport?.width || window.innerWidth;
     const height = viewport?.height || window.innerHeight;
     const resolve = (key) => {
-      const saved = stored?.[key];
-      const base =
-        saved && Number.isFinite(saved.right) ? saved : DEFAULT_POSITIONS[key];
+      const base = stored[key] || DEFAULT_POSITIONS[key];
       return {
         right: clamp(base.right, EDGE_MARGIN, Math.max(EDGE_MARGIN, width - 140)),
         top: clamp(base.top, EDGE_MARGIN, Math.max(EDGE_MARGIN, height - 100)),
@@ -203,7 +223,7 @@ const AiWidgets = (props) => {
     };
 
     option
-      .setItem("aiWidgetPositions", { ...(stored || {}), [key]: next }, false)
+      .setItem("aiWidgetPositions", { ...stored, [key]: next }, false)
       .catch((err) => {
         console.error("[aiWidgetPositions] save failed:", err);
       });
