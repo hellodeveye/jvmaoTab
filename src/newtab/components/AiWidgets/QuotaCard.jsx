@@ -4,6 +4,10 @@ import { useDraggable } from "@dnd-kit/core";
 import { IconExternalLink } from "@tabler/icons-react";
 import { useSize } from "ahooks";
 import Frost from "~/components/Frost";
+import { formatAge } from "~/utils/timeText";
+
+/** 更新时间与重置倒计时常驻显示，靠这个低频 tick 让它们自己走字 */
+const TICK_MS = 60 * 1000;
 
 /* 定位与拖拽位移走内联 style：拖拽时每帧变化的值放进模板会每帧生成新 class */
 const Card = styled.div`
@@ -65,7 +69,7 @@ const Value = styled.div`
 `;
 
 /* 单位比数字小一号并对齐基线，是这类组件里最省力的「设计过」的信号 */
-export const Unit = styled.span`
+const Unit = styled.span`
   font-size: 19px;
   font-weight: 500;
   opacity: 0.88;
@@ -107,22 +111,15 @@ const LinkIcon = styled.a`
   }
 `;
 
-function formatAge(updatedAt) {
-  if (!updatedAt) return null;
-  const minutes = Math.floor((Date.now() - updatedAt) / 60000);
-  if (minutes < 1) return "刚刚更新";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  return `${Math.floor(hours / 24)} 天前`;
-}
-
 /**
- * 额度卡片的呈现与拖拽。数据形态由各 provider 归一化后经 view 传入，
- * 卡片只负责「未配置以外的四种状态」：加载中 / 正常 / 陈旧 / 密钥失效。
+ * 额度卡片的呈现与拖拽。
+ * 四种状态（加载中 / 正常 / 陈旧 / 密钥失效）全部在这里判定；
+ * provider 只提供一个纯函数 format(data) → { prefix?, value, suffix?, alert, meta }，
+ * 于是卡片的字号体系不会泄漏给调用方。format 在渲染时调用而非缓存，
+ * 里面的倒计时才会随 tick 自己走字。
  */
 const QuotaCard = (props) => {
-  const { id, title, tint, consoleUrl, position, state, loading, view, onRefresh } =
+  const { id, title, tint, consoleUrl, position, state, loading, format, stickled, onRefresh } =
     props;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id });
@@ -130,6 +127,7 @@ const QuotaCard = (props) => {
   const cardRef = React.useRef(null);
   const cardSize = useSize(cardRef);
   const [origin, setOrigin] = React.useState({ left: 0, top: 0 });
+  const [, setTick] = React.useState(0);
 
   const setRefs = React.useCallback(
     (node) => {
@@ -139,8 +137,16 @@ const QuotaCard = (props) => {
     [setNodeRef]
   );
 
+  React.useEffect(() => {
+    if (stickled) return undefined;
+    const timer = setInterval(() => setTick((n) => n + 1), TICK_MS);
+    return () => clearInterval(timer);
+  }, [stickled]);
+
   // 毛玻璃图层要按卡片在视口中的坐标反向对齐，所以得知道真实 left/top。
   // 拖拽中不测量（此时 rect 已含 transform），改为在静止坐标上叠加位移。
+  // 依赖写成标量：position / cardSize 每次都是新对象，写对象会让每个 resize 帧
+  // 都强制同步布局一次。
   React.useLayoutEffect(() => {
     if (isDragging || !cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -149,15 +155,16 @@ const QuotaCard = (props) => {
         ? prev
         : { left: rect.left, top: rect.top }
     );
-  }, [isDragging, position, cardSize]);
+  }, [isDragging, position.right, position.top, cardSize?.width, cardSize?.height]);
 
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;
   const { data, updatedAt, error } = state;
   const unauthorized = error?.type === "unauthorized";
+  const view = data ? format(data) : null;
   const age = unauthorized ? null : formatAge(updatedAt);
 
-  const title_ = unauthorized
+  const hoverTitle = unauthorized
     ? `${title} 密钥失效，点击前往设置`
     : error
       ? `${error.message}，显示的是上次的数据，点击重试`
@@ -166,9 +173,13 @@ const QuotaCard = (props) => {
   const renderValue = () => {
     if (unauthorized) return <Value $alert $compact>密钥失效</Value>;
     if (loading && !data) return <Skeleton />;
-    if (!data || !view) return <Value $compact>—</Value>;
+    if (!view) return <Value $compact>—</Value>;
     return (
-      <Value $alert={view.alert}>{view.primary}</Value>
+      <Value $alert={view.alert}>
+        {view.prefix ? <Unit>{view.prefix}</Unit> : null}
+        {view.value}
+        {view.suffix ? <Unit>{view.suffix}</Unit> : null}
+      </Value>
     );
   };
 
@@ -178,7 +189,7 @@ const QuotaCard = (props) => {
       {...attributes}
       {...listeners}
       className={isDragging ? "dragging" : ""}
-      title={title_}
+      title={hoverTitle}
       onClick={onRefresh}
       style={{
         right: position.right,
@@ -206,10 +217,10 @@ const QuotaCard = (props) => {
         </LinkIcon>
       </Head>
       {renderValue()}
-      {!unauthorized && data && view?.meta ? <Meta>{view.meta}</Meta> : null}
+      {view?.meta ? <Meta>{view.meta}</Meta> : null}
       {age ? <Age>{age}</Age> : null}
     </Card>
   );
 };
 
-export default QuotaCard;
+export default React.memo(QuotaCard);

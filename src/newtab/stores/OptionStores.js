@@ -12,20 +12,14 @@ import _ from "lodash";
 import {
   getID
 } from "~/utils";
-import { SYNC_CONFIG_KEYS } from "./syncConfig";
-import { AI_CONFIG_KEYS } from "./aiConfig";
+import { migrateSyncConfigFromDb } from "./syncConfigStorage";
 import {
-  loadSyncConfig,
-  saveSyncConfigValue,
-  migrateSyncConfigFromDb,
-  clearSyncConfig,
-} from "./syncConfigStorage";
-import {
-  loadAiConfig,
-  saveAiConfigValue,
-  clearAiConfig,
-  pruneAiConfigFromDb,
-} from "./aiConfigStorage";
+  isLocalOptionKey,
+  loadLocalOptions,
+  saveLocalOption,
+  clearLocalOptions,
+  stripLocalOptionRows,
+} from "./localOptions";
 import { browserApi, getLastError } from "@/utils/browser";
 
 const localStorageKeys = ['bgType', 'bg2Type', 'bgBase64', 'bg2Base64', 'webdavVersion'];
@@ -45,7 +39,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 21;
+const v = 20;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -138,10 +132,6 @@ const updateOptions = {
     homeLinkPositions: {},
   },
   20: {
-    // 余额组件锚在视口右上角的坐标：{ right, top }
-    aiBalancePosition: null,
-  },
-  21: {
     // 各 AI 额度卡片锚在视口右上角的坐标：{ [provider]: { right, top } }
     aiWidgetPositions: {},
   },
@@ -177,18 +167,12 @@ export default class OptionStores {
       await db.open();
     }
     try {
-      // 同步凭据存于 chrome.storage.local：先迁移历史数据并清理 db 残留，再载入内存
+      // 凭据类配置存于 chrome.storage.local：先迁移历史数据、清理 db 残留，再载入内存
       await migrateSyncConfigFromDb(db);
-      Object.assign(this.item, await loadSyncConfig());
+      await stripLocalOptionRows(db);
+      Object.assign(this.item, await loadLocalOptions());
     } catch (error) {
-      console.error('同步配置加载失败:', error);
-    }
-    try {
-      // AI 服务商密钥同样存于 chrome.storage.local：清理导入残留后载入内存
-      await pruneAiConfigFromDb(db);
-      Object.assign(this.item, await loadAiConfig());
-    } catch (error) {
-      console.error('AI 配置加载失败:', error);
+      console.error('本地配置加载失败:', error);
     }
     setTimeout(() => {
       db.option
@@ -439,15 +423,9 @@ export default class OptionStores {
   }
 
   async setOption(key, value) {
-    // 同步凭据/版本号走 chrome.storage.local，不进 db（不随数据导出，也不触发同步推送）
-    if (SYNC_CONFIG_KEYS.includes(key)) {
-      await saveSyncConfigValue(key, value);
-      return;
-    }
-
-    // AI 服务商密钥：同样只落本地，不进 db
-    if (AI_CONFIG_KEYS.includes(key)) {
-      await saveAiConfigValue(key, value);
+    // 凭据类配置走 chrome.storage.local，不进 db（不随数据导出，也不触发同步推送）
+    if (isLocalOptionKey(key)) {
+      await saveLocalOption(key, value);
       return;
     }
 
@@ -469,8 +447,7 @@ export default class OptionStores {
         this.item = {
           homeId,
         };
-        clearSyncConfig().catch((err) => console.error('清空同步配置失败:', err));
-        clearAiConfig().catch((err) => console.error('清空 AI 配置失败:', err));
+        clearLocalOptions().catch((err) => console.error('清空本地配置失败:', err));
         db.option.clear().then(() => {
           this.update(0, homeId);
           setTimeout(() => {

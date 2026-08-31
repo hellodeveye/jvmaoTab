@@ -11,6 +11,8 @@ import useStores from "~/hooks/useStores";
 import useDebounce from "~/hooks/useDebounce";
 import LinkItemSmall from "~/scenes/Link/LinkItemSmall";
 import Frost from "~/components/Frost";
+import StickledLayer from "~/components/StickledLayer";
+import useLiveViewportSize from "~/hooks/useLiveViewportSize";
 import { filterLinkList, HOME_ENTER } from "~/utils";
 import {
   DRAG_ID_PREFIX,
@@ -23,25 +25,11 @@ import {
   fromAnchoredPositions,
   placeNewGroups,
   getLayoutAnchor,
-  getViewportSize,
   snap,
   toPlainPositions,
 } from "~/utils/homeLinkLayout";
 
-const HomeLinkOuter = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: ${(props) => (props.stickled ? "-1" : "50")};
-  /* stickled 时窗格保持挂载（卸载重挂会让下面的过渡失效），
-     用 visibility 而非仅 opacity：一并屏蔽命中测试、Tab 焦点与无障碍树。
-     CSS 对 visibility 过渡有特殊规则——淡出期间保持 visible，淡入时立即可见。
-     时长与缓动同步自壁纸入场，否则返回首页时窗格会先于壁纸出现。 */
-  opacity: ${(props) => (props.stickled ? 0 : 1)};
-  visibility: ${(props) => (props.stickled ? "hidden" : "visible")};
-  transition: opacity ${HOME_ENTER.duration}s ${HOME_ENTER.cssEase},
-    visibility ${HOME_ENTER.duration}s ${HOME_ENTER.cssEase};
-  overflow: hidden;
-  pointer-events: none;
+const HomeLinkOuter = styled(StickledLayer)`
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -57,6 +45,7 @@ const GroupShell = styled.div`
 `;
 
 const HomeLinkNav = styled.div`
+  --frost-tint: var(--homeNavBg);
   position: relative;
   width: fit-content;
   padding: 14px 16px;
@@ -264,30 +253,6 @@ const HomeLinkGroupInner = (props) => {
 const HomeLinkGroup = React.memo(HomeLinkGroupInner, areGroupPropsEqual);
 
 const VIEWPORT_FIT_OPTIONS = { fitVertical: false };
-
-function useLiveViewportSize() {
-  const [viewport, setViewport] = React.useState(getViewportSize);
-
-  React.useEffect(() => {
-    let frameId = null;
-
-    const handleResize = () => {
-      if (frameId !== null) return;
-      frameId = window.requestAnimationFrame(() => {
-        frameId = null;
-        setViewport(getViewportSize());
-      });
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (frameId !== null) window.cancelAnimationFrame(frameId);
-    };
-  }, []);
-
-  return viewport;
-}
 
 const HomeLinkListComponent = (props) => {
   const {

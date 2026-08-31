@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { App as AntApp, Form, Upload, Divider, Button, Spin, Input } from "antd";
 import "dexie-export-import";
 import { db, DB_NAME } from "~/db";
-import { stripSyncConfigRows } from "~/stores/syncConfig";
+import { stripLocalOptionRows } from "~/stores/localOptions";
 import { IconFileArrowLeft } from "@tabler/icons-react";
 import ConfirmDialogIcon from "~/components/ConfirmDialogIcon";
 import _ from "lodash";
@@ -108,7 +108,7 @@ const PreferencesData = () => {
 
                                 await db.import(blob, { noTransaction: false, clearTables: true, acceptVersionDiff: true, progressCallback });
                                 // 旧导出文件可能带有同步凭据行，导入后剔除
-                                await stripSyncConfigRows(db);
+                                await stripLocalOptionRows(db);
 
                                 setTimeout(() => {
                                     data.deleteServeData();

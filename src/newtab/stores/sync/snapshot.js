@@ -1,6 +1,6 @@
 import { db, DB_NAME } from "~/db";
 import _ from "lodash";
-import { stripSyncConfigRows } from "../syncConfig";
+import { stripLocalOptionRows } from "../localOptions";
 
 const progressCallback = () => {};
 
@@ -110,7 +110,7 @@ export async function importSnapshot(blob) {
 
   // 旧版本远端数据可能带有同步凭据行（含空 token），导入后立刻剔除，
   // 防止其回流覆盖 chrome.storage.local 中的真实配置
-  await stripSyncConfigRows(db);
+  await stripLocalOptionRows(db);
 
   const importedData = await exportSnapshot();
   if (!importedData || importedData.size === 0) {

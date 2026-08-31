@@ -3,22 +3,7 @@ import { observer } from "mobx-react";
 import styled from "styled-components";
 import { Form, Button, Input, Space, Typography, Divider } from "antd";
 import useStores from "~/hooks/useStores";
-import {
-  fetchDeepseekBalance,
-  clearDeepseekBalanceCache,
-  currencySymbol,
-  DEEPSEEK_CONSOLE_URL,
-} from "~/utils/deepseekBalance";
-import {
-  fetchKimiUsage,
-  clearKimiUsageCache,
-  KIMI_CONSOLE_URL,
-} from "~/utils/kimiUsage";
-import {
-  fetchFactoryUsage,
-  clearFactoryUsageCache,
-  FACTORY_CONSOLE_URL,
-} from "~/utils/factoryUsage";
+import { AI_PROVIDERS } from "~/utils/aiProviders";
 
 const Hint = styled.div`
   font-size: 11px;
@@ -29,42 +14,6 @@ const Hint = styled.div`
 
 /* 首屏卡片在未配置密钥时不渲染，密钥填错时首屏同样什么都看不到，
    所以每个服务商都必须给出一次明确的验证结果。 */
-const PROVIDERS = [
-  {
-    key: "deepseekApiKey",
-    label: "DeepSeek API Key",
-    placeholder: "sk-xxxxxxxxxxxx",
-    consoleUrl: DEEPSEEK_CONSOLE_URL,
-    verify: fetchDeepseekBalance,
-    clearCache: clearDeepseekBalanceCache,
-    describe: (data) =>
-      `当前余额 ${currencySymbol(data.currency)}${data.totalBalance.toFixed(2)}`,
-    hint: "首屏显示账户总余额（赠金 + 充值）。",
-  },
-  {
-    key: "kimiApiKey",
-    label: "Kimi Code API Key",
-    placeholder: "sk-kimi-xxxxxxxxxxxx",
-    consoleUrl: KIMI_CONSOLE_URL,
-    verify: fetchKimiUsage,
-    clearCache: clearKimiUsageCache,
-    describe: (data) =>
-      `滚动窗口已用 ${Math.round(data.windowPercent ?? data.weeklyPercent ?? 0)}%`,
-    hint: "要 Coding Plan 的 sk-kimi-* 密钥；platform.kimi.com 的 sk-* 是另一套，会验证失败。该用量接口官方未公开文档，字段变动可能导致显示异常。",
-  },
-  {
-    key: "factoryApiKey",
-    label: "Factory API Key",
-    placeholder: "fk-xxxxxxxxxxxx",
-    consoleUrl: FACTORY_CONSOLE_URL,
-    verify: fetchFactoryUsage,
-    clearCache: clearFactoryUsageCache,
-    describe: (data) =>
-      `5 小时窗口已用 ${Math.round(data.fiveHourPercent ?? data.weeklyPercent ?? 0)}%`,
-    hint: "在 app.factory.ai/settings/api-keys 创建 fk-* 密钥。显示的是 standard（付费模型）额度，不含 Droid Core。该接口官方未公开文档。",
-  },
-];
-
 const ProviderField = observer((props) => {
   const { provider } = props;
   const { option, tools } = useStores();
@@ -72,17 +21,17 @@ const ProviderField = observer((props) => {
   const [loading, setLoading] = React.useState(false);
   const [tested, setTested] = React.useState(null);
 
-  const saved = option.item[provider.key] || "";
+  const saved = option.item[provider.optionKey] || "";
 
   const onFinish = async (values) => {
-    const apiKey = (values[provider.key] || "").trim();
+    const apiKey = (values[provider.optionKey] || "").trim();
     setLoading(true);
     setTested(null);
     try {
-      const data = await provider.verify(apiKey);
-      await option.setItem(provider.key, apiKey);
+      const data = await provider.quota.verify(apiKey);
+      await option.setItem(provider.optionKey, apiKey);
       // 换了密钥就可能换了账号，旧数据不能留
-      await provider.clearCache();
+      await provider.quota.clearCache();
       setTested(provider.describe(data));
       tools.success?.(`${provider.label} 验证成功`);
     } catch (err) {
@@ -94,9 +43,9 @@ const ProviderField = observer((props) => {
   };
 
   const onClear = async () => {
-    await option.setItem(provider.key, "");
-    await provider.clearCache();
-    form.setFieldValue(provider.key, "");
+    await option.setItem(provider.optionKey, "");
+    await provider.quota.clearCache();
+    form.setFieldValue(provider.optionKey, "");
     setTested(null);
     tools.success?.(`已清除 ${provider.label}`);
   };
@@ -105,12 +54,12 @@ const ProviderField = observer((props) => {
     <Form
       form={form}
       layout="vertical"
-      initialValues={{ [provider.key]: saved }}
+      initialValues={{ [provider.optionKey]: saved }}
       onFinish={onFinish}
     >
       <Form.Item
         label={provider.label}
-        name={provider.key}
+        name={provider.optionKey}
         rules={[{ required: true, message: "必填" }]}
       >
         <Input.Password placeholder={provider.placeholder} autoComplete="off" />
@@ -134,8 +83,8 @@ const ProviderField = observer((props) => {
 
 const PreferencesAI = () => (
   <>
-    {PROVIDERS.map((provider, index) => (
-      <React.Fragment key={provider.key}>
+    {AI_PROVIDERS.map((provider, index) => (
+      <React.Fragment key={provider.optionKey}>
         {index > 0 ? <Divider /> : null}
         <ProviderField provider={provider} />
       </React.Fragment>

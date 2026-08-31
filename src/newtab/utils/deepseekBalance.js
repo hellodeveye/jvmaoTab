@@ -1,9 +1,6 @@
-import { requestJson, loadWithCache, clearProviderCache } from "./aiProviderCore";
+import { defineProvider } from "./aiProviderCore";
 
-export const DEEPSEEK_BALANCE_URL = "https://api.deepseek.com/user/balance";
 export const DEEPSEEK_CONSOLE_URL = "https://platform.deepseek.com/usage";
-
-const CACHE_KEY = "aiBalance:deepseek";
 
 const CURRENCY_SYMBOL = {
   CNY: "¥",
@@ -28,14 +25,8 @@ function normalize(raw) {
   };
 }
 
-export async function fetchDeepseekBalance(apiKey) {
-  return normalize(await requestJson(DEEPSEEK_BALANCE_URL, apiKey));
-}
-
-export function clearDeepseekBalanceCache() {
-  return clearProviderCache(CACHE_KEY);
-}
-
-export function getDeepseekBalance(apiKey, options) {
-  return loadWithCache(CACHE_KEY, () => fetchDeepseekBalance(apiKey), options);
-}
+export const deepseekQuota = defineProvider({
+  cacheKey: "aiBalance:deepseek",
+  url: "https://api.deepseek.com/user/balance",
+  normalize,
+});

@@ -1,16 +1,9 @@
-import {
-  requestJson,
-  loadWithCache,
-  clearProviderCache,
-} from "./aiProviderCore";
+import { defineProvider } from "./aiProviderCore";
 
 /* Factory（droid）额度接口。官方文档没有，端点从 droid CLI 的 /limits 命令反出来，
-   实测 fk-* API key 走 Authorization: Bearer 可用（X-Api-Key 头会 401）。
+   实测 fk-* key 走 Authorization: Bearer 可用（X-Api-Key 头会 401）。
    响应里三个滚动窗口各给 usedPercent 与 windowEnd。 */
-export const FACTORY_LIMITS_URL = "https://app.factory.ai/api/billing/limits";
 export const FACTORY_CONSOLE_URL = "https://app.factory.ai/settings/usage";
-
-const CACHE_KEY = "aiBalance:factory";
 
 function toPercent(window) {
   const percent = Number(window?.usedPercent);
@@ -41,14 +34,8 @@ function normalize(raw) {
   };
 }
 
-export async function fetchFactoryUsage(apiKey) {
-  return normalize(await requestJson(FACTORY_LIMITS_URL, apiKey));
-}
-
-export function clearFactoryUsageCache() {
-  return clearProviderCache(CACHE_KEY);
-}
-
-export function getFactoryUsage(apiKey, options) {
-  return loadWithCache(CACHE_KEY, () => fetchFactoryUsage(apiKey), options);
-}
+export const factoryQuota = defineProvider({
+  cacheKey: "aiBalance:factory",
+  url: "https://app.factory.ai/api/billing/limits",
+  normalize,
+});
