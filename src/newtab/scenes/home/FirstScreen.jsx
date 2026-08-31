@@ -12,6 +12,7 @@ import HomeLinkList from "./HomeLinkList";
 import HomeBgLayer from "./HomeBgLayer";
 import HomeSearch from "~/components/HomeSearch";
 import Clock from "~/components/Clock";
+import AiBalance from "~/components/AiBalance";
 import Wordmark from "~/components/Wordmark";
 import _ from "lodash";
 
@@ -96,6 +97,14 @@ const ClockWrap = styled(motion.div)`
   user-select: none; 
 `;
 const ClockContent = styled(motion.div)``;
+
+const AiBalanceWrap = styled(motion.div)`
+  position: absolute;
+  z-index: 50;
+  top: 20px;
+  right: 24px;
+  pointer-events: ${(props) => (props.$stickled ? "none" : "auto")};
+`;
 
 const LogoWrap = styled.div`
   width: ${(props) => props.navWidth}px;
@@ -500,6 +509,18 @@ const FirstScreen = (props) => {
           </ClockContent>
         </ClockWrap>
       ) : null}
+      <AiBalanceWrap
+        $stickled={unlock}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: unlock || home.isBg2 ? 0 : 1 }}
+        transition={{
+          duration: HOME_ENTER.duration,
+          ease: HOME_ENTER.ease,
+          delay: HOME_ENTER.contentDelay,
+        }}
+      >
+        <AiBalance />
+      </AiBalanceWrap>
       {!unlock ? (
         <SearchWrap
           initial={{ ...searchPosition, opacity: 0 }}
