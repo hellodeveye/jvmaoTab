@@ -10,6 +10,7 @@ import _ from "lodash";
 import useStores from "~/hooks/useStores";
 import useDebounce from "~/hooks/useDebounce";
 import LinkItemSmall from "~/scenes/Link/LinkItemSmall";
+import Frost from "~/components/Frost";
 import { filterLinkList, HOME_ENTER } from "~/utils";
 import {
   DRAG_ID_PREFIX,
@@ -75,45 +76,6 @@ const HomeLinkNav = styled.div`
     .home-link-drag-handle {
       opacity: 1;
     }
-  }
-`;
-
-/* 毛玻璃改为"预模糊壁纸对齐"实现：不用 backdrop-filter（Chromium 分块光栅化
-   会在其他元素动画/重绘时在卡片上闪现横向接缝），而是在卡片内放一个与壁纸
-   同尺寸同 fit 模式的图层（::before），按卡片坐标反向偏移对齐后整体模糊，
-   ::after 叠加着色。图层内容静态，光栅化一次后不会再因页面其他部分重绘而
-   重新采样。壁纸的 url/fit 由 FirstScreen 以 --frost-bg-* CSS 变量提供
-   （挂在 HomeLinkOuter 上）；偏移量 --frost-shift 由卡片渲染处内联提供。
-   卡片只出现在第一壁纸上（bg2 预览时分组会被清空），故无需处理 bg2。 */
-const Frost = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    transform: var(--frost-shift, none);
-    background-image: var(--frost-bg-image, none);
-    background-repeat: var(--frost-bg-repeat, no-repeat);
-    background-position: var(--frost-bg-position, center center);
-    background-size: var(--frost-bg-size, cover);
-    opacity: var(--homeImgOpacity, 1);
-    filter: saturate(180%) blur(20px);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-color: var(--homeNavBg);
   }
 `;
 

@@ -98,14 +98,6 @@ const ClockWrap = styled(motion.div)`
 `;
 const ClockContent = styled(motion.div)``;
 
-const AiBalanceWrap = styled(motion.div)`
-  position: absolute;
-  z-index: 50;
-  top: 20px;
-  right: 24px;
-  pointer-events: ${(props) => (props.$stickled ? "none" : "auto")};
-`;
-
 const LogoWrap = styled.div`
   width: ${(props) => props.navWidth}px;
   height: 100%;
@@ -509,18 +501,7 @@ const FirstScreen = (props) => {
           </ClockContent>
         </ClockWrap>
       ) : null}
-      <AiBalanceWrap
-        $stickled={unlock}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: unlock || home.isBg2 ? 0 : 1 }}
-        transition={{
-          duration: HOME_ENTER.duration,
-          ease: HOME_ENTER.ease,
-          delay: HOME_ENTER.contentDelay,
-        }}
-      >
-        <AiBalance />
-      </AiBalanceWrap>
+      <AiBalance stickled={unlock || home.isBg2} frostStyle={frostStyle} />
       {!unlock ? (
         <SearchWrap
           initial={{ ...searchPosition, opacity: 0 }}

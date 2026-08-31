@@ -45,7 +45,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 19;
+const v = 20;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -136,6 +136,10 @@ const updateOptions = {
   19: {
     // 首屏分组相对布局锚点的坐标：{ [timeKey]: { left, top } }
     homeLinkPositions: {},
+  },
+  20: {
+    // 余额组件锚在视口右上角的坐标：{ right, top }
+    aiBalancePosition: null,
   },
 }
 
