@@ -26,13 +26,35 @@ import WidgetPreview from "~/widgets/WidgetPreview";
 import SettingsForm from "~/widgets/SettingsForm";
 import { SIZE_LABELS } from "~/widgets/sizes";
 
-/* PublicModal 自己不限高，长列表得在这里滚，
-   否则组件多了会把弹窗撑出屏幕 */
-const Wrap = styled.div`
-  max-height: 520px;
-  overflow-y: auto;
-  padding: 4px 4px 0;
-  margin: -4px -4px 0;
+/* 页面外壳与抽屉页（scenes/Link）保持一致；内容本身是设置类的窄栏，
+   拉到 1600px 宽反而读不下去，所以另收一个 max-width */
+const Warp = styled.section`
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+  box-sizing: border-box;
+
+  @media (max-width: 1100px) {
+    padding: 20px 20px 64px;
+  }
+`;
+
+const Column = styled.div`
+  max-width: 760px;
+`;
+
+const PageTitle = styled.h1`
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+`;
+
+const PageDesc = styled.div`
+  font-size: 12px;
+  color: var(--colorTextSecondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
 `;
 
 const Section = styled.div`
@@ -115,11 +137,11 @@ const sizeOptions = (sizes) =>
   sizes.map((size) => ({ label: SIZE_LABELS[size], value: size }));
 
 /**
- * 组件库 + 已添加实例的管理。
+ * 小组件页：组件库 + 已添加实例的管理，渲染在 Nav 右侧的主区域。
  * 这一页对组件种类是无知的：列表、缩略图、可用性、设置表单全部走注册表字段，
  * 以后加待办、天气之类的组件都不需要再动这里。
  */
-const PreferencesWidgets = () => {
+const WidgetGallery = () => {
   const { option } = useStores();
   const item = option.item;
   const instances = listInstances(item);
@@ -150,157 +172,161 @@ const PreferencesWidgets = () => {
   const saveSetting = (key, value) => option.setItem(key, value);
 
   return (
-    <Wrap className="scroll-container">
-      <Section>组件库</Section>
-      {WIDGETS.map((definition, index) => {
-        const availability = checkAvailable(definition, item);
-        const size = picked[definition.type] || definition.sizes[0];
-        const count = instances.filter((one) => one.type === definition.type).length;
-        const group =
-          index === 0 || WIDGETS[index - 1].group !== definition.group
-            ? definition.group
-            : null;
-        const settingsOpen = openType === definition.type;
+    <Warp className="widget-workspace">
+      <Column>
+        <PageTitle>小组件</PageTitle>
+        <PageDesc>添加到首屏右上角，可以直接拖动调整位置。</PageDesc>
 
-        return (
-          <React.Fragment key={definition.type}>
-            {group ? <Group>{group}</Group> : null}
-            <Card>
-              <Row>
-                <WidgetPreview
-                  definition={definition}
-                  size={size}
-                  dim={!availability.ok}
-                />
-                <Info>
-                  <Name>
-                    {definition.title}
-                    {count > 0 ? <Tag bordered={false}>已添加 {count}</Tag> : null}
-                  </Name>
-                  <Desc>{availability.ok ? definition.summary : availability.reason}</Desc>
-                  {definition.sizes.length > 1 ? (
-                    <div style={{ marginTop: 8 }}>
-                      <Segmented
-                        size="small"
-                        options={sizeOptions(definition.sizes)}
-                        value={size}
-                        onChange={(next) =>
-                          setPicked({ ...picked, [definition.type]: next })
-                        }
-                      />
-                    </div>
-                  ) : null}
-                </Info>
-                {hasSettings(definition) ? (
-                  <Button
-                    size="small"
-                    icon={<IconSettings size={14} />}
-                    type={availability.ok ? "default" : "primary"}
-                    onClick={() => setOpenType(settingsOpen ? null : definition.type)}
-                  >
-                    设置
-                  </Button>
-                ) : null}
-                <Button
-                  size="small"
-                  type="primary"
-                  icon={<IconPlus size={14} />}
-                  disabled={!availability.ok}
-                  onClick={() => add(definition)}
-                >
-                  添加
-                </Button>
-              </Row>
-              {settingsOpen ? (
-                <Panel>
-                  <SettingsForm
-                    schema={definition.settings}
-                    values={Object.fromEntries(
-                      definition.settings.map((field) => [
-                        field.key,
-                        settingValue(field, item),
-                      ])
-                    )}
-                    onSave={saveSetting}
-                    onClear={(key) => saveSetting(key, "")}
-                  />
-                </Panel>
-              ) : null}
-            </Card>
-          </React.Fragment>
-        );
-      })}
+        <Section>组件库</Section>
+        {WIDGETS.map((definition, index) => {
+          const availability = checkAvailable(definition, item);
+          const size = picked[definition.type] || definition.sizes[0];
+          const count = instances.filter((one) => one.type === definition.type).length;
+          const group =
+            index === 0 || WIDGETS[index - 1].group !== definition.group
+              ? definition.group
+              : null;
+          const settingsOpen = openType === definition.type;
 
-      <Section>已添加</Section>
-      {instances.length === 0 ? (
-        <Empty>还没有添加任何组件。</Empty>
-      ) : (
-        instances.map((instance) => {
-          const definition = getWidget(instance.type);
-          const configOpen = openInstance === instance.id;
           return (
-            <Card key={instance.id}>
-              <Row>
-                <Info>
-                  <Name>
-                    {definition.instanceTitle?.(instance) || definition.title}
-                  </Name>
-                  {definition.sizes.length > 1 ? (
-                    <div style={{ marginTop: 8 }}>
-                      <Segmented
-                        size="small"
-                        options={sizeOptions(definition.sizes)}
-                        value={instance.size}
-                        onChange={(next) =>
-                          save(updateInstance(instances, instance.id, { size: next }))
-                        }
-                      />
-                    </div>
+            <React.Fragment key={definition.type}>
+              {group ? <Group>{group}</Group> : null}
+              <Card>
+                <Row>
+                  <WidgetPreview
+                    definition={definition}
+                    size={size}
+                    dim={!availability.ok}
+                  />
+                  <Info>
+                    <Name>
+                      {definition.title}
+                      {count > 0 ? <Tag bordered={false}>已添加 {count}</Tag> : null}
+                    </Name>
+                    <Desc>{availability.ok ? definition.summary : availability.reason}</Desc>
+                    {definition.sizes.length > 1 ? (
+                      <div style={{ marginTop: 8 }}>
+                        <Segmented
+                          size="small"
+                          options={sizeOptions(definition.sizes)}
+                          value={size}
+                          onChange={(next) =>
+                            setPicked({ ...picked, [definition.type]: next })
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </Info>
+                  {hasSettings(definition) ? (
+                    <Button
+                      size="small"
+                      icon={<IconSettings size={14} />}
+                      type={availability.ok ? "default" : "primary"}
+                      onClick={() => setOpenType(settingsOpen ? null : definition.type)}
+                    >
+                      设置
+                    </Button>
                   ) : null}
-                </Info>
-                {hasConfig(definition) ? (
                   <Button
                     size="small"
-                    icon={<IconSettings size={14} />}
-                    onClick={() => setOpenInstance(configOpen ? null : instance.id)}
+                    type="primary"
+                    icon={<IconPlus size={14} />}
+                    disabled={!availability.ok}
+                    onClick={() => add(definition)}
                   >
-                    设置
+                    添加
                   </Button>
+                </Row>
+                {settingsOpen ? (
+                  <Panel>
+                    <SettingsForm
+                      schema={definition.settings}
+                      values={Object.fromEntries(
+                        definition.settings.map((field) => [
+                          field.key,
+                          settingValue(field, item),
+                        ])
+                      )}
+                      onSave={saveSetting}
+                      onClear={(key) => saveSetting(key, "")}
+                    />
+                  </Panel>
                 ) : null}
-                <Button
-                  size="small"
-                  icon={<IconMinus size={14} />}
-                  onClick={() => drop(instance)}
-                >
-                  移除
-                </Button>
-              </Row>
-              {configOpen ? (
-                <Panel>
-                  <SettingsForm
-                    schema={definition.configSchema}
-                    values={toPlain(instance.config || {})}
-                    onSave={(key, value) =>
-                      save(updateInstanceConfig(instances, instance.id, key, value))
-                    }
-                    onClear={(key) =>
-                      save(updateInstanceConfig(instances, instance.id, key, ""))
-                    }
-                  />
-                </Panel>
-              ) : null}
-            </Card>
+              </Card>
+            </React.Fragment>
           );
-        })
-      )}
+        })}
 
-      <Footer>
-        组件显示在首屏右上角，可以直接拖动调整位置。
-        密钥只保存在本机，不参与 WebDAV / Gist 同步，也不会出现在导出的数据文件里；
-        换设备需要重新填写。
-      </Footer>
-    </Wrap>
+        <Section>已添加</Section>
+        {instances.length === 0 ? (
+          <Empty>还没有添加任何组件。</Empty>
+        ) : (
+          instances.map((instance) => {
+            const definition = getWidget(instance.type);
+            const configOpen = openInstance === instance.id;
+            return (
+              <Card key={instance.id}>
+                <Row>
+                  <Info>
+                    <Name>
+                      {definition.instanceTitle?.(instance) || definition.title}
+                    </Name>
+                    {definition.sizes.length > 1 ? (
+                      <div style={{ marginTop: 8 }}>
+                        <Segmented
+                          size="small"
+                          options={sizeOptions(definition.sizes)}
+                          value={instance.size}
+                          onChange={(next) =>
+                            save(updateInstance(instances, instance.id, { size: next }))
+                          }
+                        />
+                      </div>
+                    ) : null}
+                  </Info>
+                  {hasConfig(definition) ? (
+                    <Button
+                      size="small"
+                      icon={<IconSettings size={14} />}
+                      onClick={() => setOpenInstance(configOpen ? null : instance.id)}
+                    >
+                      设置
+                    </Button>
+                  ) : null}
+                  <Button
+                    size="small"
+                    icon={<IconMinus size={14} />}
+                    onClick={() => drop(instance)}
+                  >
+                    移除
+                  </Button>
+                </Row>
+                {configOpen ? (
+                  <Panel>
+                    <SettingsForm
+                      schema={definition.configSchema}
+                      values={toPlain(instance.config || {})}
+                      onSave={(key, value) =>
+                        save(updateInstanceConfig(instances, instance.id, key, value))
+                      }
+                      onClear={(key) =>
+                        save(updateInstanceConfig(instances, instance.id, key, ""))
+                      }
+                    />
+                  </Panel>
+                ) : null}
+              </Card>
+            );
+          })
+        )}
+
+        <Footer>
+          密钥只保存在本机，不参与 WebDAV / Gist 同步，也不会出现在导出的数据文件里；
+          换设备需要重新填写。
+        </Footer>
+      </Column>
+    </Warp>
   );
 };
 
-export default observer(PreferencesWidgets);
+export default observer(WidgetGallery);

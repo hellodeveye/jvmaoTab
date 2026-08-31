@@ -213,6 +213,9 @@ const Nav = () => {
       if (type === "link" && location.pathname === "/") {
         return state.activeKey == key;
       }
+      if (key === "widgets") {
+        return location.pathname === "/widgets";
+      }
       return false;
     },
     [state.activeKey, location.pathname]
@@ -225,7 +228,7 @@ const Nav = () => {
         onLinkTitleClick(e.key);
         saveLActiveCache(e);
       } else if (e.key === "widgets") {
-        tools.openWidgetGallery();
+        navigate("/widgets");
       } else if (e.key === "preferences") {
         tools.preferencesOpen = true;
       } else if (e.key === "Manual" || e.key === "About") {

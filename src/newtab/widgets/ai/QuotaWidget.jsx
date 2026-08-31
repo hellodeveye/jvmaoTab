@@ -194,7 +194,7 @@ const QuotaWidget = observer((props) => {
     // 拖拽结束后浏览器仍会补一个 click，这里挡掉那次误刷新
     if (justDraggedRef.current) return;
     if (state.error?.type === "unauthorized") {
-      tools.openWidgetGallery();
+      tools.openWidgetsPage();
       return;
     }
     refresh(true);

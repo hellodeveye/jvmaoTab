@@ -36,6 +36,10 @@ export default class ToolsStores {
   /** 首屏分组布局重置信号（仅内存，不落库） */
   homeLinkLayoutEpoch = 0;
 
+  /** 「去小组件页」的意图信号：首屏卡片盖在主区域之上，得先解锁再跳路由，
+      而解锁状态在 Home 里，所以这里只发信号，由 Home 执行 */
+  gotoWidgets = false;
+
   rootStore;
 
   constructor(rootStore) {
@@ -49,6 +53,8 @@ export default class ToolsStores {
       openPublicModalEvent$: observable,
       timeKey: observable,
       homeLinkLayoutEpoch: observable,
+      gotoWidgets: observable,
+      openWidgetsPage: action,
       setRightClickEvent: action,
       setOpenPublicModalEvent: action,
       resetHomeLinkLayout: action,
@@ -67,6 +73,11 @@ export default class ToolsStores {
       option.item.homeLinkPositions = previous;
       throw error;
     }
+  }
+
+  /** 首屏上的组件可以用它把用户送到小组件页（比如密钥失效时） */
+  openWidgetsPage() {
+    this.gotoWidgets = true;
   }
 
   setRightClickEvent(e, menu = []) {
@@ -99,11 +110,6 @@ export default class ToolsStores {
 
   setOpenPublicModalEvent(event) {
     this.openPublicModalEvent$ = event;
-  }
-
-  /** 小组件面板，与首选项同级的一个独立菜单 */
-  openWidgetGallery() {
-    this.openPublicModal("Widgets", {}, 620, "小组件");
   }
 
   openPublicModal(type, data = {}, width = 600, title = "") {

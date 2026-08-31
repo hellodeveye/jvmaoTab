@@ -5,6 +5,7 @@ import PageLoading from "~/components/PageLoading";
 
 const Home = React.lazy(() => import("~/view/Home"));
 const LinkHome = React.lazy(() => import("~/scenes/Link"));
+const WidgetGallery = React.lazy(() => import("~/scenes/widgets/WidgetGallery"));
 
 export default () => {
   return (
@@ -24,6 +25,7 @@ export default () => {
         <Routes>
           <Route path="/" element={<Home />}>
             <Route index element={<LinkHome />} />
+            <Route path="widgets" element={<WidgetGallery />} />
           </Route>
         </Routes>
       </HashRouter>

@@ -1,6 +1,6 @@
 import React from "react";
 import { Col, Row, Drawer, Spin } from "antd";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { observer } from "mobx-react";
 import {
   useScroll,
@@ -72,6 +72,7 @@ const Home = () => {
   const s = useScroll(ref);
   const isHovering = useHover(ref);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const v = useReactive(
     {
@@ -198,6 +199,14 @@ const Home = () => {
       tools.tabListDrawer = false;
     }
   }, [link.list, v.unlock, location.pathname]);
+
+  // 首屏的组件卡片盖在主区域之上，要去小组件页得先把首屏收起来
+  React.useEffect(() => {
+    if (!tools.gotoWidgets) return;
+    tools.gotoWidgets = false;
+    v.unlock = true;
+    navigate("/widgets");
+  }, [tools.gotoWidgets, navigate]);
 
   React.useEffect(() => {
     // 监听滚轮事件

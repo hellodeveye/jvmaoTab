@@ -8,7 +8,6 @@ import PageLoading from "~/components/PageLoading";
 const EditLink = React.lazy(() => import("~/scenes/Link/EditLink"));
 const About = React.lazy(() => import("~/scenes/about/About"));
 const MoveGroup = React.lazy(() => import("~/scenes/Link/MoveGroup"));
-const WidgetGallery = React.lazy(() => import("~/scenes/widgets/WidgetGallery"));
 
 function PublicModal() {
   const { tools, create } = useStores();
@@ -53,8 +52,6 @@ function PublicModal() {
         return <EditLink {...comProps} />;
       case "MoveGroup":
         return <MoveGroup {...comProps} />;
-      case "Widgets":
-        return <WidgetGallery {...comProps} />;
       case "About":
       case "Manual": // 兼容旧调用
         return <About {...comProps} />;
