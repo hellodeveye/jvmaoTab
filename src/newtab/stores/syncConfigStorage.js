@@ -1,46 +1,11 @@
-import { browserApi, getLastError } from "@/utils/browser";
 import { SYNC_CONFIG_KEYS, stripSyncConfigRows } from "./syncConfig";
+import { storageGet, storageSet, storageRemove } from "./browserLocalStore";
 
 const MIGRATED_FLAG = 'syncConfigMigrated';
 
-function storageGet(keys) {
-  return new Promise((resolve) => {
-    if (!browserApi?.storage?.local) {
-      resolve({});
-      return;
-    }
-    browserApi.storage.local.get(keys, (result) => {
-      void getLastError();
-      resolve(result || {});
-    });
-  });
-}
-
-function storageSet(data) {
-  return new Promise((resolve) => {
-    if (!browserApi?.storage?.local) {
-      resolve();
-      return;
-    }
-    browserApi.storage.local.set(data, () => {
-      void getLastError();
-      resolve();
-    });
-  });
-}
-
 /** 清空全部同步配置（设置重置时使用） */
 export function clearSyncConfig() {
-  return new Promise((resolve) => {
-    if (!browserApi?.storage?.local) {
-      resolve();
-      return;
-    }
-    browserApi.storage.local.remove(SYNC_CONFIG_KEYS, () => {
-      void getLastError();
-      resolve();
-    });
-  });
+  return storageRemove(SYNC_CONFIG_KEYS);
 }
 
 /** 读取全部同步配置（仅返回已存在的键） */

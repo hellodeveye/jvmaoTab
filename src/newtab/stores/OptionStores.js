@@ -13,12 +13,19 @@ import {
   getID
 } from "~/utils";
 import { SYNC_CONFIG_KEYS } from "./syncConfig";
+import { AI_CONFIG_KEYS } from "./aiConfig";
 import {
   loadSyncConfig,
   saveSyncConfigValue,
   migrateSyncConfigFromDb,
   clearSyncConfig,
 } from "./syncConfigStorage";
+import {
+  loadAiConfig,
+  saveAiConfigValue,
+  clearAiConfig,
+  pruneAiConfigFromDb,
+} from "./aiConfigStorage";
 import { browserApi, getLastError } from "@/utils/browser";
 
 const localStorageKeys = ['bgType', 'bg2Type', 'bgBase64', 'bg2Base64', 'webdavVersion'];
@@ -167,6 +174,13 @@ export default class OptionStores {
       Object.assign(this.item, await loadSyncConfig());
     } catch (error) {
       console.error('同步配置加载失败:', error);
+    }
+    try {
+      // AI 服务商密钥同样存于 chrome.storage.local：清理导入残留后载入内存
+      await pruneAiConfigFromDb(db);
+      Object.assign(this.item, await loadAiConfig());
+    } catch (error) {
+      console.error('AI 配置加载失败:', error);
     }
     setTimeout(() => {
       db.option
@@ -423,6 +437,12 @@ export default class OptionStores {
       return;
     }
 
+    // AI 服务商密钥：同样只落本地，不进 db
+    if (AI_CONFIG_KEYS.includes(key)) {
+      await saveAiConfigValue(key, value);
+      return;
+    }
+
     const res = await this.getOption(key, true);
     if (res?.id) {
       await db.option.update(res.id, { value });
@@ -442,6 +462,7 @@ export default class OptionStores {
           homeId,
         };
         clearSyncConfig().catch((err) => console.error('清空同步配置失败:', err));
+        clearAiConfig().catch((err) => console.error('清空 AI 配置失败:', err));
         db.option.clear().then(() => {
           this.update(0, homeId);
           setTimeout(() => {
