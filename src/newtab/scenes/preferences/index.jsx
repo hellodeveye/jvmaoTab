@@ -9,6 +9,7 @@ import PreferencesSo from "./so"
 import PreferencesData from "./data"
 import SystemData from "./system"
 import Sync from "./sync"
+import PreferencesAI from "./ai"
 
 
 const Wrap = styled.div`
@@ -44,6 +45,9 @@ const options = [
   }, {
     label: '同步',
     value: 'sync',
+  }, {
+    label: 'AI',
+    value: 'ai',
   }
 ]
 
@@ -54,6 +58,7 @@ const content = {
   data: <PreferencesData />,
   system: <SystemData />,
   sync: <Sync />,
+  ai: <PreferencesAI />,
 }
 
 const Preferences = () => {
