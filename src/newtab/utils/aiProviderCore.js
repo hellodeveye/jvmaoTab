@@ -1,5 +1,7 @@
 import Storage from "~/utils/storage";
 
+/* AI 额度类 provider 的公共部分：带超时的请求、TTL 缓存、倒计时格式化。 */
+
 /** 新标签页生命周期只有几秒，超时后直接落到缓存值，不重试 */
 const TIMEOUT_MS = 8000;
 /** 缓存有效期：期内打开新标签页直接读缓存，不发请求 */
@@ -101,4 +103,20 @@ export async function loadWithCache(cacheKey, fetcher, { force = false } = {}) {
       error,
     };
   }
+}
+
+/** 剩余时间：接口给的是绝对时间戳，展示成倒计时才对得上「还能不能继续写」 */
+export function formatCountdown(isoTime) {
+  if (!isoTime) return null;
+  const target = Date.parse(isoTime);
+  if (!Number.isFinite(target)) return null;
+
+  const minutes = Math.floor((target - Date.now()) / 60000);
+  if (minutes <= 0) return "即将重置";
+
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  if (days > 0) return `${days} 天 ${hours} 小时后重置`;
+  if (hours > 0) return `${hours} 小时 ${minutes % 60} 分后重置`;
+  return `${minutes} 分后重置`;
 }

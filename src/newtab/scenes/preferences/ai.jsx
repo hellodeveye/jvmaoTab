@@ -14,6 +14,11 @@ import {
   clearKimiUsageCache,
   KIMI_CONSOLE_URL,
 } from "~/utils/kimiUsage";
+import {
+  fetchFactoryUsage,
+  clearFactoryUsageCache,
+  FACTORY_CONSOLE_URL,
+} from "~/utils/factoryUsage";
 
 const Hint = styled.div`
   font-size: 11px;
@@ -46,6 +51,17 @@ const PROVIDERS = [
     describe: (data) =>
       `滚动窗口已用 ${Math.round(data.windowPercent ?? data.weeklyPercent ?? 0)}%`,
     hint: "要 Coding Plan 的 sk-kimi-* 密钥；platform.kimi.com 的 sk-* 是另一套，会验证失败。该用量接口官方未公开文档，字段变动可能导致显示异常。",
+  },
+  {
+    key: "factoryApiKey",
+    label: "Factory API Key",
+    placeholder: "fk-xxxxxxxxxxxx",
+    consoleUrl: FACTORY_CONSOLE_URL,
+    verify: fetchFactoryUsage,
+    clearCache: clearFactoryUsageCache,
+    describe: (data) =>
+      `5 小时窗口已用 ${Math.round(data.fiveHourPercent ?? data.weeklyPercent ?? 0)}%`,
+    hint: "在 app.factory.ai/settings/api-keys 创建 fk-* 密钥。显示的是 standard（付费模型）额度，不含 Droid Core。该接口官方未公开文档。",
   },
 ];
 

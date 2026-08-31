@@ -17,11 +17,9 @@ import {
   currencySymbol,
   DEEPSEEK_CONSOLE_URL,
 } from "~/utils/deepseekBalance";
-import {
-  getKimiUsage,
-  formatCountdown,
-  KIMI_CONSOLE_URL,
-} from "~/utils/kimiUsage";
+import { getKimiUsage, KIMI_CONSOLE_URL } from "~/utils/kimiUsage";
+import { getFactoryUsage, FACTORY_CONSOLE_URL } from "~/utils/factoryUsage";
+import { formatCountdown } from "~/utils/aiProviderCore";
 import QuotaCard, { Unit } from "./QuotaCard";
 
 /* DeepSeek 品牌蓝：取自官网在用的 #426EFE / #4F70DC 一族，主色 #4D6BFE。
@@ -43,10 +41,17 @@ const KIMI_TINT = [
   "linear-gradient(158deg, rgba(38, 35, 43, 0.72) 0%, rgba(26, 24, 30, 0.66) 52%, rgba(33, 31, 38, 0.7) 100%)",
 ].join(", ");
 
+/* Factory 品牌色 #d15010，取自官网（出现最频繁的那个）。 */
+const FACTORY_TINT = [
+  HIGHLIGHT,
+  "linear-gradient(158deg, rgba(209, 80, 16, 0.74) 0%, rgba(186, 68, 12, 0.68) 52%, rgba(198, 76, 20, 0.72) 100%)",
+].join(", ");
+
 /** 位置锚在视口右上角：换显示器时卡片跟着角走，不会漂到屏幕中间 */
 const DEFAULT_POSITIONS = {
   deepseek: { right: 24, top: 20 },
   kimi: { right: 24, top: 148 },
+  factory: { right: 24, top: 286 },
 };
 const EDGE_MARGIN = 8;
 /** 更新时间与重置倒计时常驻显示，用低频 tick 让它们自己走字 */
@@ -71,6 +76,25 @@ const EMPTY_STATE = { data: null, updatedAt: null, error: null };
 function clamp(value, min, max) {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+function formatPercentPart(label, percent) {
+  if (percent === null || percent === undefined) return null;
+  return `${label} ${Math.round(percent)}%`;
+}
+
+/** 用量型卡片（Kimi / Factory）的主指标都是「滚动窗口已用百分比」，形态一致 */
+function buildUsageView(percent, countdown, parts) {
+  return {
+    primary: (
+      <>
+        {Math.round(percent)}
+        <Unit>%</Unit>
+      </>
+    ),
+    alert: percent >= USAGE_ALERT_PERCENT,
+    meta: [countdown, ...parts].filter(Boolean).join(" · ") || null,
+  };
 }
 
 /** 每个 provider 的取数与刷新，只有密钥存在时才真的请求 */
@@ -101,7 +125,11 @@ function useProviderQuota(apiKey, loader) {
 const AiWidgets = (props) => {
   const { stickled, frostStyle } = props;
   const { option, tools } = useStores();
-  const { deepseekApiKey = "", kimiApiKey = "" } = option.item;
+  const {
+    deepseekApiKey = "",
+    kimiApiKey = "",
+    factoryApiKey = "",
+  } = option.item;
 
   const [, setTick] = React.useState(0);
   const viewport = useSize(document.documentElement);
@@ -110,8 +138,9 @@ const AiWidgets = (props) => {
 
   const deepseek = useProviderQuota(deepseekApiKey, getDeepseekBalance);
   const kimi = useProviderQuota(kimiApiKey, getKimiUsage);
+  const factory = useProviderQuota(factoryApiKey, getFactoryUsage);
 
-  const anyEnabled = Boolean(deepseekApiKey || kimiApiKey);
+  const anyEnabled = Boolean(deepseekApiKey || kimiApiKey || factoryApiKey);
 
   React.useEffect(() => {
     if (!anyEnabled) return undefined;
@@ -137,7 +166,11 @@ const AiWidgets = (props) => {
         top: clamp(base.top, EDGE_MARGIN, Math.max(EDGE_MARGIN, height - 100)),
       };
     };
-    return { deepseek: resolve("deepseek"), kimi: resolve("kimi") };
+    return {
+      deepseek: resolve("deepseek"),
+      kimi: resolve("kimi"),
+      factory: resolve("factory"),
+    };
   }, [stored, viewport]);
 
   const handleDragEnd = useMemoizedFn((event) => {
@@ -203,28 +236,26 @@ const AiWidgets = (props) => {
     };
   }, [deepseek.state.data]);
 
+  const factoryView = React.useMemo(() => {
+    const data = factory.state.data;
+    if (!data) return null;
+    const percent = data.fiveHourPercent ?? data.weeklyPercent;
+    if (percent === null || percent === undefined) return null;
+    return buildUsageView(percent, formatCountdown(data.fiveHourReset), [
+      formatPercentPart("周", data.weeklyPercent),
+      formatPercentPart("月", data.monthlyPercent),
+    ]);
+  }, [factory.state.data]);
+
   const kimiView = React.useMemo(() => {
     const data = kimi.state.data;
     if (!data) return null;
     const percent = data.windowPercent ?? data.weeklyPercent;
     if (percent === null || percent === undefined) return null;
 
-    const countdown = formatCountdown(data.windowReset);
-    const weekly =
-      data.weeklyPercent === null || data.weeklyPercent === undefined
-        ? null
-        : `周 ${Math.round(data.weeklyPercent)}%`;
-
-    return {
-      primary: (
-        <>
-          {Math.round(percent)}
-          <Unit>%</Unit>
-        </>
-      ),
-      alert: percent >= USAGE_ALERT_PERCENT,
-      meta: [countdown, weekly].filter(Boolean).join(" · ") || null,
-    };
+    return buildUsageView(percent, formatCountdown(data.windowReset), [
+      formatPercentPart("周", data.weeklyPercent),
+    ]);
   }, [kimi.state.data]);
 
   if (!anyEnabled) return null;
@@ -248,6 +279,19 @@ const AiWidgets = (props) => {
             loading={deepseek.loading}
             view={deepseekView}
             onRefresh={makeRefresh(deepseek)}
+          />
+        ) : null}
+        {factoryApiKey ? (
+          <QuotaCard
+            id="factory"
+            title="Factory"
+            tint={FACTORY_TINT}
+            consoleUrl={FACTORY_CONSOLE_URL}
+            position={positions.factory}
+            state={factory.state}
+            loading={factory.loading}
+            view={factoryView}
+            onRefresh={makeRefresh(factory)}
           />
         ) : null}
         {kimiApiKey ? (
