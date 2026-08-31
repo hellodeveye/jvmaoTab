@@ -4,7 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { IconExternalLink } from "@tabler/icons-react";
 import Frost from "~/components/Frost";
 import { formatAge } from "~/utils/timeText";
-import { widgetSize } from "~/utils/aiWidgetSizes";
+import { widgetSize, WIDGET_METRICS as M } from "~/utils/aiWidgetSizes";
 
 /** 更新时间与重置倒计时常驻显示，靠这个低频 tick 让它们自己走字 */
 const TICK_MS = 60 * 1000;
@@ -44,8 +44,8 @@ const Card = styled.div`
   flex-direction: column;
   width: ${(props) => props.$size.width}px;
   height: ${(props) => props.$size.height}px;
-  padding: 16px;
-  border-radius: 22px;
+  padding: ${M.padding}px;
+  border-radius: ${M.radius}px;
   border: 1px solid ${(props) => props.$scheme.border};
   color: ${(props) => props.$scheme.text};
   cursor: pointer;
@@ -76,7 +76,7 @@ const Head = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 11px;
+  font-size: ${M.headFontSize}px;
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -91,7 +91,9 @@ const Value = styled.div`
   align-items: baseline;
   /* 非数字状态（密钥失效 / —）用整档字号会撑破卡片 */
   font-size: ${(props) =>
-    props.$compact ? "20px" : `${props.$size.valueFontSize}px`};
+    props.$compact
+      ? `${Math.round(props.$size.valueFontSize * 0.66)}px`
+      : `${props.$size.valueFontSize}px`};
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -113,17 +115,17 @@ const Spacer = styled.div`
 
 /* 数值与分解进度条并排：中卡多出来的横向空间用来放信息，不是把文案拉宽 */
 const Row = styled.div`
-  margin-top: 18px;
+  margin-top: ${M.valueOffset}px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: ${M.columnGap}px;
 `;
 
 const Bars = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: ${M.barGap}px;
   /* 让第一条对齐数值的字面顶部，而不是行盒顶部 */
   padding-top: 2px;
 `;
@@ -131,21 +133,21 @@ const Bars = styled.div`
 const Bar = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11px;
+  gap: ${M.barRowGap}px;
+  font-size: ${M.barFontSize}px;
   line-height: 1;
 `;
 
 const BarLabel = styled.span`
-  width: 38px;
+  width: ${M.barLabelWidth}px;
   flex: none;
   opacity: 0.78;
 `;
 
 const BarTrack = styled.div`
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
+  height: ${M.barTrackHeight}px;
+  border-radius: ${M.barTrackHeight / 2}px;
   background: ${(props) => props.$scheme.barTrack};
   overflow: hidden;
 `;
@@ -162,7 +164,7 @@ const BarFill = styled.div`
 `;
 
 const BarValue = styled.span`
-  width: 30px;
+  width: ${M.barValueWidth}px;
   flex: none;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -170,23 +172,23 @@ const BarValue = styled.span`
 `;
 
 const Meta = styled.div`
-  margin-top: 9px;
-  font-size: 11px;
-  line-height: 1.45;
+  margin-top: ${M.metaGap}px;
+  font-size: ${M.metaFontSize}px;
+  line-height: ${M.metaLineHeight};
   opacity: 0.78;
   white-space: nowrap;
 `;
 
 const Age = styled.div`
-  margin-top: 6px;
-  font-size: 11px;
+  margin-top: ${M.ageGap}px;
+  font-size: ${M.ageFontSize}px;
   line-height: 1;
   opacity: 0.55;
 `;
 
 const Skeleton = styled.div`
-  width: 78px;
-  height: 22px;
+  width: ${(props) => props.$size.valueFontSize * 2.6}px;
+  height: ${(props) => props.$size.valueFontSize * 0.72}px;
   border-radius: 5px;
   background: currentColor;
   opacity: 0.2;
@@ -272,7 +274,7 @@ const QuotaCard = (props) => {
           密钥失效
         </Value>
       );
-    if (loading && !data) return <Skeleton />;
+    if (loading && !data) return <Skeleton $size={box} />;
     if (!view) return <Value $size={box} $scheme={palette} $compact>—</Value>;
     return (
       <Value $size={box} $scheme={palette} $alert={view.alert}>
