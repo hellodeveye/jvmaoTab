@@ -56,12 +56,11 @@ const Head = styled.div`
   opacity: 0.88;
 `;
 
-/* 数值贴底：不同档位的卡片并排时，标题行与数值行各自成线 */
-const Body = styled.div`
-  margin-top: auto;
-`;
-
+/* 数值行按固定偏移锚在标题下方，底部行锚在卡片底部，中间的空档交给
+   Spacer 吸收。整块内容一起贴底的话，没有副行的卡片数值会被顶下去，
+   并排时就对不齐——苹果那套齐整靠的是各行锚死，不是卡片一样大。 */
 const Value = styled.div`
+  margin-top: 22px;
   display: flex;
   align-items: baseline;
   /* 非数字状态（密钥失效 / —）用整档字号会撑破卡片 */
@@ -82,11 +81,16 @@ const Unit = styled.span`
   opacity: 0.88;
 `;
 
+const Spacer = styled.div`
+  flex: 1;
+`;
+
 const Meta = styled.div`
   margin-top: 9px;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.45;
   opacity: 0.78;
+  white-space: nowrap;
 `;
 
 const Age = styled.div`
@@ -97,6 +101,7 @@ const Age = styled.div`
 `;
 
 const Skeleton = styled.div`
+  margin-top: 22px;
   width: 78px;
   height: 22px;
   border-radius: 5px;
@@ -228,11 +233,12 @@ const QuotaCard = (props) => {
           <IconExternalLink size={13} stroke={1.8} />
         </LinkIcon>
       </Head>
-      <Body>
-        {renderValue()}
-        {view?.meta ? <Meta>{view.meta}</Meta> : null}
-        {age ? <Age>{age}</Age> : null}
-      </Body>
+      {renderValue()}
+      <Spacer />
+      {view?.meta?.length
+        ? view.meta.map((line) => <Meta key={line}>{line}</Meta>)
+        : null}
+      {age ? <Age>{age}</Age> : null}
     </Card>
   );
 };

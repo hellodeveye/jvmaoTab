@@ -26,11 +26,13 @@ function percentPart(label, percent) {
 
 /** 用量型卡片（Kimi / Factory）的主指标都是「滚动窗口已用百分比」，形态一致 */
 function usageView(percent, countdown, parts) {
+  const joined = parts.filter(Boolean).join(" · ");
   return {
     value: String(Math.round(percent)),
     suffix: "%",
     alert: percent >= USAGE_ALERT_PERCENT,
-    meta: [countdown, ...parts].filter(Boolean).join(" · ") || null,
+    // 倒计时与各周期用量分两行：合成一行会超出小卡宽度并在中途折行
+    meta: [countdown, joined].filter(Boolean),
   };
 }
 
@@ -57,7 +59,7 @@ export const AI_PROVIDERS = [
       prefix: currencySymbol(data.currency),
       value: data.totalBalance.toFixed(2),
       alert: !data.isAvailable,
-      meta: null,
+      meta: [],
     }),
     describe: (data) =>
       `当前余额 ${currencySymbol(data.currency)}${data.totalBalance.toFixed(2)}`,
@@ -97,8 +99,7 @@ export const AI_PROVIDERS = [
     tint: tint(
       "linear-gradient(158deg, rgba(209, 80, 16, 0.74) 0%, rgba(186, 68, 12, 0.68) 52%, rgba(198, 76, 20, 0.72) 100%)"
     ),
-    // Factory 三个窗口的副行最长，小卡塞不下，给中卡
-    size: "medium",
+    size: "small",
     format: (data) =>
       usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), [
         percentPart("周", data.weeklyPercent),
