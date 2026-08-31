@@ -99,12 +99,17 @@ export const AI_PROVIDERS = [
     tint: tint(
       "linear-gradient(158deg, rgba(209, 80, 16, 0.74) 0%, rgba(186, 68, 12, 0.68) 52%, rgba(198, 76, 20, 0.72) 100%)"
     ),
-    size: "small",
-    format: (data) =>
-      usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), [
-        percentPart("周", data.weeklyPercent),
-        percentPart("月", data.monthlyPercent),
-      ]),
+    /* 三个滚动窗口值得各占一条进度条，中卡的横向空间才用在了信息量上，
+       而不是把同一行文案拉宽。 */
+    size: "medium",
+    format: (data) => ({
+      ...usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), []),
+      bars: [
+        { label: "5 小时", percent: data.fiveHourPercent },
+        { label: "周", percent: data.weeklyPercent },
+        { label: "月", percent: data.monthlyPercent },
+      ].filter((bar) => bar.percent !== null && bar.percent !== undefined),
+    }),
     describe: (data) =>
       `5 小时窗口已用 ${Math.round(data.fiveHourPercent ?? data.weeklyPercent ?? 0)}%`,
     hint: "在 app.factory.ai/settings/api-keys 创建 fk-* 密钥。显示的是 standard（付费模型）额度，不含 Droid Core。该接口官方未公开文档。",

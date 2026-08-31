@@ -60,7 +60,6 @@ const Head = styled.div`
    Spacer 吸收。整块内容一起贴底的话，没有副行的卡片数值会被顶下去，
    并排时就对不齐——苹果那套齐整靠的是各行锚死，不是卡片一样大。 */
 const Value = styled.div`
-  margin-top: 22px;
   display: flex;
   align-items: baseline;
   /* 非数字状态（密钥失效 / —）用整档字号会撑破卡片 */
@@ -85,6 +84,61 @@ const Spacer = styled.div`
   flex: 1;
 `;
 
+/* 数值与分解进度条并排：中卡多出来的横向空间用来放信息，不是把文案拉宽 */
+const Row = styled.div`
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+`;
+
+const Bars = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* 让第一条对齐数值的字面顶部，而不是行盒顶部 */
+  padding-top: 2px;
+`;
+
+const Bar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1;
+`;
+
+const BarLabel = styled.span`
+  width: 38px;
+  flex: none;
+  opacity: 0.78;
+`;
+
+const BarTrack = styled.div`
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.24);
+  overflow: hidden;
+`;
+
+const BarFill = styled.div`
+  height: 100%;
+  border-radius: inherit;
+  width: ${(props) => props.$percent}%;
+  background: ${(props) =>
+    props.$alert ? "#ffd2cd" : "rgba(255, 255, 255, 0.88)"};
+`;
+
+const BarValue = styled.span`
+  width: 30px;
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+`;
+
 const Meta = styled.div`
   margin-top: 9px;
   font-size: 11px;
@@ -101,7 +155,6 @@ const Age = styled.div`
 `;
 
 const Skeleton = styled.div`
-  margin-top: 22px;
   width: 78px;
   height: 22px;
   border-radius: 5px;
@@ -233,7 +286,25 @@ const QuotaCard = (props) => {
           <IconExternalLink size={13} stroke={1.8} />
         </LinkIcon>
       </Head>
-      {renderValue()}
+      <Row>
+        {renderValue()}
+        {view?.bars?.length ? (
+          <Bars>
+            {view.bars.map((bar) => (
+              <Bar key={bar.label}>
+                <BarLabel>{bar.label}</BarLabel>
+                <BarTrack>
+                  <BarFill
+                    $percent={Math.min(100, Math.max(0, bar.percent))}
+                    $alert={bar.percent >= 90}
+                  />
+                </BarTrack>
+                <BarValue>{Math.round(bar.percent)}%</BarValue>
+              </Bar>
+            ))}
+          </Bars>
+        ) : null}
+      </Row>
       <Spacer />
       {view?.meta?.length
         ? view.meta.map((line) => <Meta key={line}>{line}</Meta>)
