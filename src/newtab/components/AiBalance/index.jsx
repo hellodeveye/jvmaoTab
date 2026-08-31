@@ -17,9 +17,13 @@ import {
 
 const DRAG_ID = "ai-balance-widget";
 /* DeepSeek 品牌蓝：取自官网在用的 #426EFE / #4F70DC 一族，主色 #4D6BFE。
-   做成渐变半透明而非纯色块，底下的预模糊壁纸仍能透出一点，避免变成一块贴纸。 */
-const DEEPSEEK_TINT =
-  "linear-gradient(155deg, rgba(77, 107, 254, 0.92) 0%, rgba(66, 110, 254, 0.88) 45%, rgba(79, 112, 220, 0.9) 100%)";
+   两层叠加而非单层实色——不透明的色块和旁边半透明的抽屉卡片材质对不上，会显得
+   像贴上去的贴纸。这里把品牌蓝压到 0.7 左右让底下的预模糊壁纸透上来，再叠一层
+   左上角的径向高光当光源，卡片才有体积。 */
+const DEEPSEEK_TINT = [
+  "radial-gradient(118% 92% at 0% 0%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 42%, rgba(255, 255, 255, 0) 62%)",
+  "linear-gradient(158deg, rgba(77, 107, 254, 0.74) 0%, rgba(63, 92, 236, 0.68) 52%, rgba(79, 112, 220, 0.72) 100%)",
+].join(", ");
 /** 位置锚在视口右上角：换显示器时组件跟着角走，不会漂到屏幕中间 */
 const DEFAULT_POSITION = { right: 24, top: 20 };
 const EDGE_MARGIN = 8;
@@ -43,11 +47,13 @@ const Card = styled.div`
   position: absolute;
   pointer-events: auto;
   width: fit-content;
-  min-width: 124px;
-  padding: 12px 14px 11px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  min-width: 152px;
+  padding: 13px 16px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
+  /* 卡片透出壁纸后白字要在浅色天空上也立得住 */
+  text-shadow: 0 1px 2px rgba(18, 30, 78, 0.28);
   cursor: pointer;
   touch-action: none;
   -webkit-user-select: none;
@@ -57,7 +63,7 @@ const Card = styled.div`
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    box-shadow: 0 6px 20px rgba(38, 62, 168, 0.32);
+    box-shadow: 0 10px 28px rgba(30, 50, 140, 0.3);
     .ai-balance-link {
       opacity: 0.7;
     }
@@ -65,7 +71,7 @@ const Card = styled.div`
 
   &.dragging {
     cursor: grabbing;
-    box-shadow: 0 14px 34px rgba(38, 62, 168, 0.42);
+    box-shadow: 0 18px 40px rgba(30, 50, 140, 0.42);
   }
 `;
 
@@ -75,32 +81,46 @@ const Head = styled.div`
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: 0.02em;
-  opacity: 0.82;
+  letter-spacing: 0.04em;
+  opacity: 0.88;
 `;
 
 const Value = styled.div`
-  margin-top: 8px;
-  font-size: 26px;
+  display: flex;
+  align-items: baseline;
+  margin-top: 10px;
+  /* 非数字状态（密钥失效 / —）用 32px 会撑爆卡片 */
+  font-size: ${(props) => (props.$compact ? "20px" : "32px")};
+  font-weight: 600;
   line-height: 1;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   /* 蓝底上用暖色示警：红字在蓝底上既不醒目也不好读 */
   color: ${(props) => (props.$alert ? "#ffd2cd" : "inherit")};
 `;
 
+/* 货币符号比数字小一号并对齐基线，是这类组件里最省力的"设计过"的信号 */
+const Symbol = styled.span`
+  margin-right: 1px;
+  font-size: 19px;
+  font-weight: 500;
+  opacity: 0.88;
+`;
+
 const Age = styled.div`
-  margin-top: 7px;
+  margin-top: 9px;
   font-size: 11px;
   line-height: 1;
-  opacity: 0.62;
+  opacity: 0.7;
 `;
 
 const Skeleton = styled.div`
-  margin-top: 8px;
-  width: 68px;
-  height: 18px;
-  border-radius: 4px;
+  margin-top: 10px;
+  width: 78px;
+  height: 22px;
+  border-radius: 5px;
   background: currentColor;
   opacity: 0.2;
 `;
@@ -175,12 +195,12 @@ const AiBalanceCard = (props) => {
       : "点击刷新余额，拖动可调整位置";
 
   const renderValue = () => {
-    if (unauthorized) return <Value $alert>密钥失效</Value>;
+    if (unauthorized) return <Value $alert $compact>密钥失效</Value>;
     if (loading && !data) return <Skeleton />;
-    if (!data) return <Value>—</Value>;
+    if (!data) return <Value $compact>—</Value>;
     return (
       <Value $alert={insufficient}>
-        {currencySymbol(data.currency)}
+        <Symbol>{currencySymbol(data.currency)}</Symbol>
         {data.totalBalance.toFixed(2)}
       </Value>
     );
