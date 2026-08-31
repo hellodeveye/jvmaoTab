@@ -53,12 +53,18 @@ const Bone = styled.div`
  * 需要更贴近实物的组件可以在定义里自带 Preview 覆盖掉这里。
  */
 const WidgetPreview = (props) => {
-  const { widget, dim } = props;
-  if (widget.Preview) return <widget.Preview widget={widget} dim={dim} />;
-  const box = widgetSize(widget.size);
+  const { definition, size, dim } = props;
+  if (definition.Preview)
+    return <definition.Preview definition={definition} size={size} dim={dim} />;
+  const box = widgetSize(size);
   return (
-    <Shell $size={box} $scheme={scheme(widget.scheme)} $tint={widget.tint} $dim={dim}>
-      <Title>{widget.title}</Title>
+    <Shell
+      $size={box}
+      $scheme={scheme(definition.scheme)}
+      $tint={definition.tint}
+      $dim={dim}
+    >
+      <Title>{definition.title}</Title>
       <Bone $size={box} />
     </Shell>
   );

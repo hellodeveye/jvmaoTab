@@ -101,6 +101,11 @@ export default class ToolsStores {
     this.openPublicModalEvent$ = event;
   }
 
+  /** 小组件面板，与首选项同级的一个独立菜单 */
+  openWidgetGallery() {
+    this.openPublicModal("Widgets", {}, 620, "小组件");
+  }
+
   openPublicModal(type, data = {}, width = 600, title = "") {
     if (this.openPublicModalEvent$) {
       this.openPublicModalEvent$.emit({

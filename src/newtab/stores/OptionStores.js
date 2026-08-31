@@ -20,9 +20,18 @@ import {
   clearLocalOptions,
   stripLocalOptionRows,
 } from "./localOptions";
-import { toPlainPositions } from "~/utils/homeLinkLayout";
-import { AI_PROVIDERS } from "~/utils/aiProviders";
 import { browserApi, getLastError } from "@/utils/browser";
+
+/* 组件层重构中作废的键。不清掉的话它们会一直躺在库里，并跟着数据导出与同步走。 */
+const DEAD_OPTION_KEYS = ["aiWidgetPositions", "widgetIds", "widgetPositions"];
+
+async function stripRows(keys) {
+  try {
+    await db.option.where("key").anyOf(keys).delete();
+  } catch (error) {
+    console.error("清理废弃配置失败:", error);
+  }
+}
 
 const localStorageKeys = ['bgType', 'bg2Type', 'bgBase64', 'bg2Base64', 'webdavVersion'];
 
@@ -41,7 +50,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 21;
+const v = 22;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -133,16 +142,12 @@ const updateOptions = {
     // 首屏分组相对布局锚点的坐标：{ [timeKey]: { left, top } }
     homeLinkPositions: {},
   },
-  20: {
-    // 各 AI 额度卡片锚在视口右上角的坐标：{ [provider]: { right, top } }
-    // v21 起改名为 widgetPositions，这里保留定义只为让 20 → 21 的迁移能读到旧值
-    aiWidgetPositions: {},
-  },
-  21: {
-    // 已添加到首屏的组件 id，顺序即添加顺序
-    widgetIds: [],
-    // 各组件锚在视口右上角的坐标：{ [widgetId]: { right, top } }
-    widgetPositions: {},
+  20: {},
+  21: {},
+  22: {
+    // 首屏组件实例：[{ id, type, size, position: { right, top }, config }]
+    // 坐标与配置都长在实例上，所以同一种组件可以放多个，见 ~/widgets/instances
+    widgets: [],
   },
 }
 
@@ -179,6 +184,7 @@ export default class OptionStores {
       // 凭据类配置存于 chrome.storage.local：先迁移历史数据、清理 db 残留，再载入内存
       await migrateSyncConfigFromDb(db);
       await stripLocalOptionRows(db);
+      await stripRows(DEAD_OPTION_KEYS);
       Object.assign(this.item, await loadLocalOptions());
     } catch (error) {
       console.error('本地配置加载失败:', error);
@@ -330,24 +336,6 @@ export default class OptionStores {
   update(_v, home_id) {
     try {
       const defaultOption = this.getNewOptionToValue(_v, this.item);
-
-      // v20 → v21：组件层从「AI 专属」泛化成通用组件层。
-      if (_v < 21) {
-        // 坐标键 aiWidgetPositions → widgetPositions，把用户拖过的位置带过来，
-        // 升级后卡片不会跳回默认位。转成纯对象再写：MobX 的 Proxy 进不了
-        // IndexedDB 的结构化克隆。
-        if (this.item.aiWidgetPositions) {
-          defaultOption.widgetPositions = toPlainPositions(
-            this.item.aiWidgetPositions,
-            ["right", "top"]
-          );
-        }
-        // v20 时代只要配了密钥卡片就自动上屏；改成组件库显式添加之后，
-        // 把当时屏上确实有的那几张如实固化成列表，升级后首屏不变。
-        defaultOption.widgetIds = AI_PROVIDERS.filter(
-          (provider) => this.item[provider.optionKey]
-        ).map((provider) => provider.id);
-      }
 
       sendRuntimeMessage("getOption").then((response) => {
 

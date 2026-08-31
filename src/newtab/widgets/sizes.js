@@ -65,17 +65,3 @@ export const SIZE_LABELS = {
 export function widgetSize(name) {
   return WIDGET_SIZES[name] || WIDGET_SIZES[DEFAULT_SIZE];
 }
-
-/**
- * 默认位置：右上角起，按各卡实际高度依次向下排成一列。
- * 从尺寸推导而非手写坐标，改了尺寸档或 SCALE 都不会错位。
- */
-export function stackDefaultPositions(providers, { right = 24, top = 20 } = {}) {
-  let offset = top;
-  const positions = {};
-  providers.forEach((provider) => {
-    positions[provider.id] = { right, top: offset };
-    offset += widgetSize(provider.size).height + WIDGET_GAP;
-  });
-  return positions;
-}

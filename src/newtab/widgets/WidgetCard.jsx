@@ -87,15 +87,17 @@ const Body = styled.div`
 
 /**
  * 组件外壳：尺寸档、材质、配色、标题栏、拖拽与毛玻璃对齐。
- * 不认识任何一种具体组件的内容——内容由 widget 自己作为 children 传进来，
+ * 不认识任何一种具体组件的内容——内容由组件自己作为 children 传进来，
  * 于是加一种新组件（待办、天气……）只需要写它的内容部分。
+ *
+ * 尺寸读实例（用户可在组件库里换档），外观读定义（同一种组件的所有实例长得一样）。
  */
 const WidgetCard = (props) => {
-  const { widget, position, onClick, tip, action, children } = props;
-  const box = widgetSize(widget.size);
-  const palette = scheme(widget.scheme);
+  const { instance, definition, position, onClick, tip, action, children } = props;
+  const box = widgetSize(instance.size);
+  const palette = scheme(definition.scheme);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: widget.id });
+    useDraggable({ id: instance.id });
 
   const cardRef = React.useRef(null);
   const [origin, setOrigin] = React.useState({ left: 0, top: 0 });
@@ -143,13 +145,13 @@ const WidgetCard = (props) => {
         zIndex: isDragging ? 100 : 1,
         willChange: isDragging ? "transform" : "auto",
         "--frost-shift": `translate(${-(origin.left + tx)}px, ${-(origin.top + ty)}px)`,
-        "--frost-tint": widget.tint,
-        "--widget-accent": widget.accent,
+        "--frost-tint": definition.tint,
+        "--widget-accent": definition.accent,
       }}
     >
       <Frost />
       <Head>
-        <span>{widget.title}</span>
+        <span>{definition.instanceTitle?.(instance) || definition.title}</span>
         {action}
       </Head>
       <Body>{children}</Body>

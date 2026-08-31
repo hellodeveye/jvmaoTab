@@ -7,20 +7,6 @@ import {
 import { kimiQuota, KIMI_CONSOLE_URL } from "./kimiUsage";
 import { factoryQuota, FACTORY_CONSOLE_URL } from "./factoryUsage";
 
-/* 卡片着色。两层叠加而非单层实色——不透明的色块和旁边半透明的抽屉卡片材质对不上，
-   会显得像贴上去的贴纸。品牌色压到 0.7 左右让底下的预模糊壁纸透上来，再叠一层
-   左上角的径向高光当光源，卡片才有体积。 */
-const HIGHLIGHT =
-  "radial-gradient(118% 92% at 0% 0%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 42%, rgba(255, 255, 255, 0) 62%)";
-
-const tint = (...layers) => [HIGHLIGHT, ...layers].join(", ");
-
-/* 亮色卡上白色高光是看不见的，换成左上偏白、右下微暗的柔和渐层来做体积 */
-const LIGHT_HIGHLIGHT =
-  "radial-gradient(120% 95% at 0% 0%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 58%), radial-gradient(90% 80% at 100% 100%, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0) 60%)";
-
-const lightTint = (...layers) => [LIGHT_HIGHLIGHT, ...layers].join(", ");
-
 /** 窗口用量到这个比例就该提醒了 */
 const USAGE_ALERT_PERCENT = 90;
 
@@ -42,8 +28,11 @@ function usageView(percent, countdown, parts) {
 }
 
 /**
- * provider 目录：首屏卡片与首选项页读的是同一份。
- * 新增一个 provider = 写一个 normalize + 在这里加一条。
+ * 服务商目录：端点、取数、以及「数据 → 卡片文案」的纯函数。
+ * 新增一个服务商 = 写一个 normalize + 在这里加一条 + 在 widgets/ai 里给它一套外观。
+ *
+ * 卡片长什么样（材质、强调色、尺寸档）不在这里，在 widgets/ai/index.js——
+ * 那是组件的事，这里只管数据。
  *
  * format 在每次渲染时调用而非缓存，倒计时才会随时间自己走字。
  */
@@ -56,10 +45,6 @@ export const AI_PROVIDERS = [
     placeholder: "sk-xxxxxxxxxxxx",
     consoleUrl: DEEPSEEK_CONSOLE_URL,
     quota: deepseekQuota,
-    tint: tint(
-      "linear-gradient(158deg, rgba(77, 107, 254, 0.74) 0%, rgba(63, 92, 236, 0.68) 52%, rgba(79, 112, 220, 0.72) 100%)"
-    ),
-    size: "small",
     summary: "账户总余额，赠金 + 充值",
     format: (data) => ({
       prefix: currencySymbol(data.currency),
@@ -79,13 +64,6 @@ export const AI_PROVIDERS = [
     placeholder: "sk-kimi-xxxxxxxxxxxx",
     consoleUrl: KIMI_CONSOLE_URL,
     quota: kimiQuota,
-    /* Kimi 官网是暖白 #fbfaf9 配墨黑 #121212，黑白灰识别体系、没有饱和主色，
-       所以用墨灰而不是编一个假的品牌色。偏暖（r>g>b）：一来贴合它那个暖白，
-       二来和 Factory 的中性近黑分得开——两张都是深色卡，靠冷暖区分。 */
-    tint: tint(
-      "linear-gradient(158deg, rgba(48, 43, 38, 0.7) 0%, rgba(36, 32, 28, 0.64) 52%, rgba(43, 38, 34, 0.68) 100%)"
-    ),
-    size: "small",
     summary: "Coding Plan 滚动窗口用量与重置倒计时",
     format: (data) =>
       usageView(data.windowPercent ?? data.weeklyPercent, formatCountdown(data.windowReset), [
@@ -103,18 +81,6 @@ export const AI_PROVIDERS = [
     placeholder: "fk-xxxxxxxxxxxx",
     consoleUrl: FACTORY_CONSOLE_URL,
     quota: factoryQuota,
-    /* Factory 是「黑白 + 橙色强调」，且官网 <html data-theme="light">，
-       CSS 里 light 规则 83 条、dark 只有 7 条——默认就是亮色。
-       底色取 --surface-raised #fff / --surface-page #f5f5f5 / --light-base-primary #eee，
-       橙色 --accent-100 #ef6f2e 只做强调（这里落在三条进度条上），从不做底色。 */
-    scheme: "light",
-    tint: lightTint(
-      "linear-gradient(158deg, rgba(255, 255, 255, 0.82) 0%, rgba(238, 238, 238, 0.74) 52%, rgba(245, 245, 245, 0.78) 100%)"
-    ),
-    accent: "#ef6f2e",
-    /* 三个滚动窗口值得各占一条进度条，中卡的横向空间才用在了信息量上，
-       而不是把同一行文案拉宽。 */
-    size: "medium",
     summary: "5 小时 / 周 / 月 三档用量进度",
     format: (data) => ({
       ...usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), []),
@@ -130,5 +96,3 @@ export const AI_PROVIDERS = [
   },
 ];
 
-/** 密钥字段从目录派生，避免「加了 provider 忘了加键」 */
-export const AI_OPTION_KEYS = AI_PROVIDERS.map((provider) => provider.optionKey);

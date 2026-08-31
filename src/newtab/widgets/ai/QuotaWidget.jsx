@@ -161,6 +161,9 @@ function useProviderQuota(apiKey, load) {
   return { state, loading, refresh };
 }
 
+/** 分解进度条要占一列，小卡塞不下：小卡只显示主指标与倒计时 */
+const showsBars = (size) => size !== "small";
+
 /**
  * AI 额度卡片。
  * 四种状态（加载中 / 正常 / 陈旧 / 密钥失效）全部在这里判定；
@@ -171,15 +174,15 @@ function useProviderQuota(apiKey, load) {
  * 自带取数：某个 provider 的响应到达只重渲染它自己，不牵动别的卡片。
  */
 const QuotaWidget = observer((props) => {
-  const { widget, position, stickled, justDraggedRef } = props;
-  const { provider } = widget;
+  const { instance, definition, position, stickled, justDraggedRef } = props;
+  const { provider } = definition;
   const { option, tools } = useStores();
   const apiKey = option.item[provider.optionKey] || "";
   const { state, loading, refresh } = useProviderQuota(apiKey, provider.quota.load);
   const [, setTick] = React.useState(0);
 
-  const box = widgetSize(widget.size);
-  const palette = scheme(widget.scheme);
+  const box = widgetSize(instance.size);
+  const palette = scheme(definition.scheme);
 
   React.useEffect(() => {
     if (stickled) return undefined;
@@ -191,7 +194,7 @@ const QuotaWidget = observer((props) => {
     // 拖拽结束后浏览器仍会补一个 click，这里挡掉那次误刷新
     if (justDraggedRef.current) return;
     if (state.error?.type === "unauthorized") {
-      tools.preferencesOpen = true;
+      tools.openWidgetGallery();
       return;
     }
     refresh(true);
@@ -202,8 +205,10 @@ const QuotaWidget = observer((props) => {
   const view = data ? provider.format(data) : null;
   const age = unauthorized ? null : formatAge(updatedAt);
 
+  const bars = showsBars(instance.size) ? view?.bars : null;
+
   const tip = unauthorized
-    ? `${widget.title} 密钥失效，点击前往设置`
+    ? `${definition.title} 密钥失效，点击前往设置`
     : error
       ? `${error.message}，显示的是上次的数据，点击重试`
       : "点击刷新，拖动可调整位置";
@@ -228,7 +233,8 @@ const QuotaWidget = observer((props) => {
 
   return (
     <WidgetCard
-      widget={widget}
+      instance={instance}
+      definition={definition}
       position={position}
       onClick={onRefresh}
       tip={tip}
@@ -238,7 +244,7 @@ const QuotaWidget = observer((props) => {
           href={provider.consoleUrl}
           target="_blank"
           rel="noreferrer"
-          title={`打开 ${widget.title} 控制台`}
+          title={`打开 ${definition.title} 控制台`}
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -248,9 +254,9 @@ const QuotaWidget = observer((props) => {
     >
       <Row>
         {renderValue()}
-        {view?.bars?.length ? (
+        {bars?.length ? (
           <Bars>
-            {view.bars.map((bar) => (
+            {bars.map((bar) => (
               <Bar key={bar.label}>
                 <BarLabel>{bar.label}</BarLabel>
                 <BarTrack $scheme={palette}>

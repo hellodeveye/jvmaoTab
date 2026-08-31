@@ -8,38 +8,27 @@ import {
 } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { useMemoizedFn } from "ahooks";
-import _ from "lodash";
 import useStores from "~/hooks/useStores";
 import useLiveViewportSize from "~/hooks/useLiveViewportSize";
 import StickledLayer from "~/components/StickledLayer";
-import {
-  getViewportSize,
-  snap,
-  toPlainPositions,
-  VIEW_MARGIN,
-} from "~/utils/homeLinkLayout";
+import { snap } from "~/utils/homeLinkLayout";
 import { getWidget } from "./registry";
-import { homeWidgets, WIDGET_POSITIONS_KEY } from "./state";
-import { widgetSize, stackDefaultPositions } from "./sizes";
-
-/** 位置锚在视口右上角：换显示器时卡片跟着角走，不会漂到屏幕中间 */
-const AXES = ["right", "top"];
-
-function clampToViewport(position, viewport, box) {
-  const { width, height } = getViewportSize(viewport);
-  return {
-    right: _.clamp(position.right, VIEW_MARGIN, Math.max(VIEW_MARGIN, width - box.width)),
-    top: _.clamp(position.top, VIEW_MARGIN, Math.max(VIEW_MARGIN, height - box.height)),
-  };
-}
+import {
+  homeInstances,
+  listInstances,
+  updateInstance,
+  WIDGETS_KEY,
+} from "./instances";
+import { clampToViewport } from "./layout";
+import { widgetSize } from "./sizes";
 
 /**
  * 组件层：只管布局、拖拽与坐标持久化，不认识任何一种具体组件。
- * 每个组件的取数与内容都在它自己的 Component 里，于是一张卡片的数据到达
+ * 每个实例的取数与内容都在它自己的 Component 里，于是一张卡片的数据到达
  * 不会牵动其他卡片重渲染。
  */
 const Layer = observer((props) => {
-  const { stickled, frostStyle, widgets } = props;
+  const { stickled, frostStyle, instances } = props;
   const { option } = useStores();
   const viewport = useLiveViewportSize();
   const justDraggedRef = React.useRef(false);
@@ -49,30 +38,10 @@ const Layer = observer((props) => {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  const stored = React.useMemo(
-    () => toPlainPositions(option.item[WIDGET_POSITIONS_KEY], AXES),
-    [option.item[WIDGET_POSITIONS_KEY]]
-  );
-
-  const positions = React.useMemo(() => {
-    // 默认坐标按当前这几张卡排，添加/移除后没拖过的卡片会自己补位
-    const defaults = stackDefaultPositions(widgets);
-    const resolved = {};
-    widgets.forEach((widget) => {
-      resolved[widget.id] = clampToViewport(
-        stored[widget.id] || defaults[widget.id],
-        viewport,
-        widgetSize(widget.size)
-      );
-    });
-    return resolved;
-  }, [stored, viewport, widgets]);
-
   const handleDragEnd = useMemoizedFn((event) => {
     const id = String(event.active?.id || "");
-    const current = positions[id];
-    const widget = getWidget(id);
-    if (!current || !widget) return;
+    const instance = instances.find((one) => one.id === id);
+    if (!instance) return;
     const dx = event.delta?.x || 0;
     const dy = event.delta?.y || 0;
     if (dx === 0 && dy === 0) return;
@@ -84,17 +53,20 @@ const Layer = observer((props) => {
     }, 0);
 
     // right 与 x 方向相反：往左拖 right 变大
-    const next = clampToViewport(
-      { right: snap(current.right - dx), top: snap(current.top + dy) },
+    const position = clampToViewport(
+      {
+        right: snap(instance.position.right - dx),
+        top: snap(instance.position.top + dy),
+      },
       viewport,
-      widgetSize(widget.size)
+      widgetSize(instance.size)
     );
 
-    option
-      .setItem(WIDGET_POSITIONS_KEY, { ...stored, [id]: next }, false)
-      .catch((err) => {
-        console.error(`[${WIDGET_POSITIONS_KEY}] save failed:`, err);
-      });
+    // 写的是全量数组，所以要连同其他实例一起转纯对象，见 instances.toPlain
+    const next = updateInstance(listInstances(option.item), id, { position });
+    option.setItem(WIDGETS_KEY, next, false).catch((err) => {
+      console.error(`[${WIDGETS_KEY}] save failed:`, err);
+    });
   });
 
   return (
@@ -105,30 +77,38 @@ const Layer = observer((props) => {
         modifiers={[restrictToParentElement]}
         onDragEnd={handleDragEnd}
       >
-        {widgets.map((widget) => (
-          <widget.Component
-            key={widget.id}
-            widget={widget}
-            position={positions[widget.id]}
-            stickled={stickled}
-            justDraggedRef={justDraggedRef}
-          />
-        ))}
+        {/* 坐标每次渲染重算而不做 memo：卡片就这么几张，而 memo 的签名要覆盖
+            size / position / config 才不会漏更新，那个签名比重算还贵。
+            拖拽每帧的位移走 useDraggable 的 transform，不经过这一层。 */}
+        {instances.map((instance) => {
+          const definition = getWidget(instance.type);
+          const Component = definition.Component;
+          return (
+            <Component
+              key={instance.id}
+              instance={instance}
+              definition={definition}
+              position={clampToViewport(
+                instance.position,
+                viewport,
+                widgetSize(instance.size)
+              )}
+              stickled={stickled}
+              justDraggedRef={justDraggedRef}
+            />
+          );
+        })}
       </DndContext>
     </StickledLayer>
   );
 });
 
-/** 一个组件都没添加时不挂载下面那层，省掉 resize 监听与各组件的取数状态 */
+/** 一个实例都没有时不挂载下面那层，省掉 resize 监听与各组件的取数状态 */
 const WidgetLayer = (props) => {
   const { option } = useStores();
-  const list = homeWidgets(option.item);
-  // 每次都是新数组，用 id 串当记忆键，首屏的其他重渲染才不会连带重算坐标
-  const ids = list.map((widget) => widget.id).join("|");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const widgets = React.useMemo(() => list, [ids]);
-  if (widgets.length === 0) return null;
-  return <Layer {...props} widgets={widgets} />;
+  const instances = homeInstances(option.item);
+  if (instances.length === 0) return null;
+  return <Layer {...props} instances={instances} />;
 };
 
 export default observer(WidgetLayer);

@@ -9,8 +9,6 @@ import PreferencesSo from "./so"
 import PreferencesData from "./data"
 import SystemData from "./system"
 import Sync from "./sync"
-import PreferencesAI from "./ai"
-import PreferencesWidgets from "./widgets"
 
 
 const Wrap = styled.div`
@@ -46,17 +44,9 @@ const options = [
   }, {
     label: '同步',
     value: 'sync',
-  }, {
-    label: 'AI',
-    value: 'ai',
-  }, {
-    label: '小组件',
-    value: 'widgets',
   }
 ]
 
-/* 存组件而不是元素：组件库要能把用户跳到「AI」页去填密钥，
-   得往下传 onNavigate，元素常量做不到这件事。 */
 const content = {
   wallpaper: PreferencesBG,
   search: PreferencesSo,
@@ -64,8 +54,6 @@ const content = {
   data: PreferencesData,
   system: SystemData,
   sync: Sync,
-  ai: PreferencesAI,
-  widgets: PreferencesWidgets,
 }
 
 const Preferences = () => {
@@ -111,7 +99,7 @@ const Preferences = () => {
             value={activeType} onChange={setActiveType}
           />
         </NavWrap>
-        {ActivePanel ? <ActivePanel onNavigate={setActiveType} /> : null}
+        {ActivePanel ? <ActivePanel /> : null}
       </Wrap>
     </Modal>
   );
