@@ -8,7 +8,7 @@
  *
  * 本模块保持无浏览器 API 依赖，便于在 Node 测试环境中打包。
  */
-export const AI_CONFIG_KEYS = ['deepseekApiKey'];
+export const AI_CONFIG_KEYS = ['deepseekApiKey', 'kimiApiKey'];
 
 /**
  * 清除 option 表中的 AI 配置残留行。

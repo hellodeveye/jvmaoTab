@@ -45,7 +45,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 20;
+const v = 21;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -140,6 +140,10 @@ const updateOptions = {
   20: {
     // 余额组件锚在视口右上角的坐标：{ right, top }
     aiBalancePosition: null,
+  },
+  21: {
+    // 各 AI 额度卡片锚在视口右上角的坐标：{ [provider]: { right, top } }
+    aiWidgetPositions: {},
   },
 }
 
