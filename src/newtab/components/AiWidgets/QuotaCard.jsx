@@ -2,9 +2,9 @@ import React from "react";
 import styled from "styled-components";
 import { useDraggable } from "@dnd-kit/core";
 import { IconExternalLink } from "@tabler/icons-react";
-import { useSize } from "ahooks";
 import Frost from "~/components/Frost";
 import { formatAge } from "~/utils/timeText";
+import { widgetSize } from "~/utils/aiWidgetSizes";
 
 /** 更新时间与重置倒计时常驻显示，靠这个低频 tick 让它们自己走字 */
 const TICK_MS = 60 * 1000;
@@ -13,10 +13,12 @@ const TICK_MS = 60 * 1000;
 const Card = styled.div`
   position: absolute;
   pointer-events: auto;
-  width: fit-content;
-  min-width: 152px;
-  padding: 13px 16px 12px;
-  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  width: ${(props) => props.$size.width}px;
+  height: ${(props) => props.$size.height}px;
+  padding: 16px;
+  border-radius: 22px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #fff;
   cursor: pointer;
@@ -54,12 +56,17 @@ const Head = styled.div`
   opacity: 0.88;
 `;
 
+/* 数值贴底：不同档位的卡片并排时，标题行与数值行各自成线 */
+const Body = styled.div`
+  margin-top: auto;
+`;
+
 const Value = styled.div`
   display: flex;
   align-items: baseline;
-  margin-top: 10px;
-  /* 非数字状态（密钥失效 / —）用 32px 会撑爆卡片 */
-  font-size: ${(props) => (props.$compact ? "20px" : "32px")};
+  /* 非数字状态（密钥失效 / —）用整档字号会撑破卡片 */
+  font-size: ${(props) =>
+    props.$compact ? "20px" : `${props.$size.valueFontSize}px`};
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.01em;
@@ -70,7 +77,7 @@ const Value = styled.div`
 
 /* 单位比数字小一号并对齐基线，是这类组件里最省力的「设计过」的信号 */
 const Unit = styled.span`
-  font-size: 19px;
+  font-size: ${(props) => props.$size.unitFontSize}px;
   font-weight: 500;
   opacity: 0.88;
 `;
@@ -78,7 +85,7 @@ const Unit = styled.span`
 const Meta = styled.div`
   margin-top: 9px;
   font-size: 11px;
-  line-height: 1;
+  line-height: 1.5;
   opacity: 0.78;
 `;
 
@@ -90,7 +97,6 @@ const Age = styled.div`
 `;
 
 const Skeleton = styled.div`
-  margin-top: 10px;
   width: 78px;
   height: 22px;
   border-radius: 5px;
@@ -119,13 +125,13 @@ const LinkIcon = styled.a`
  * 里面的倒计时才会随 tick 自己走字。
  */
 const QuotaCard = (props) => {
-  const { id, title, tint, consoleUrl, position, state, loading, format, stickled, onRefresh } =
+  const { id, title, tint, consoleUrl, size, position, state, loading, format, stickled, onRefresh } =
     props;
+  const box = widgetSize(size);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id });
 
   const cardRef = React.useRef(null);
-  const cardSize = useSize(cardRef);
   const [origin, setOrigin] = React.useState({ left: 0, top: 0 });
   const [, setTick] = React.useState(0);
 
@@ -155,7 +161,7 @@ const QuotaCard = (props) => {
         ? prev
         : { left: rect.left, top: rect.top }
     );
-  }, [isDragging, position.right, position.top, cardSize?.width, cardSize?.height]);
+  }, [isDragging, position.right, position.top, box.width, box.height]);
 
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;
@@ -171,14 +177,19 @@ const QuotaCard = (props) => {
       : "点击刷新，拖动可调整位置";
 
   const renderValue = () => {
-    if (unauthorized) return <Value $alert $compact>密钥失效</Value>;
+    if (unauthorized)
+      return (
+        <Value $size={box} $alert $compact>
+          密钥失效
+        </Value>
+      );
     if (loading && !data) return <Skeleton />;
-    if (!view) return <Value $compact>—</Value>;
+    if (!view) return <Value $size={box} $compact>—</Value>;
     return (
-      <Value $alert={view.alert}>
-        {view.prefix ? <Unit>{view.prefix}</Unit> : null}
+      <Value $size={box} $alert={view.alert}>
+        {view.prefix ? <Unit $size={box}>{view.prefix}</Unit> : null}
         {view.value}
-        {view.suffix ? <Unit>{view.suffix}</Unit> : null}
+        {view.suffix ? <Unit $size={box}>{view.suffix}</Unit> : null}
       </Value>
     );
   };
@@ -186,6 +197,7 @@ const QuotaCard = (props) => {
   return (
     <Card
       ref={setRefs}
+      $size={box}
       {...attributes}
       {...listeners}
       className={isDragging ? "dragging" : ""}
@@ -216,9 +228,11 @@ const QuotaCard = (props) => {
           <IconExternalLink size={13} stroke={1.8} />
         </LinkIcon>
       </Head>
-      {renderValue()}
-      {view?.meta ? <Meta>{view.meta}</Meta> : null}
-      {age ? <Age>{age}</Age> : null}
+      <Body>
+        {renderValue()}
+        {view?.meta ? <Meta>{view.meta}</Meta> : null}
+        {age ? <Age>{age}</Age> : null}
+      </Body>
     </Card>
   );
 };

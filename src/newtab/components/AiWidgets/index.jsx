@@ -12,7 +12,8 @@ import _ from "lodash";
 import useStores from "~/hooks/useStores";
 import useLiveViewportSize from "~/hooks/useLiveViewportSize";
 import StickledLayer from "~/components/StickledLayer";
-import { AI_PROVIDERS } from "~/utils/aiProviders";
+import { AI_PROVIDERS, AI_DEFAULT_POSITIONS } from "~/utils/aiProviders";
+import { widgetSize } from "~/utils/aiWidgetSizes";
 import {
   getViewportSize,
   snap,
@@ -23,17 +24,13 @@ import QuotaCard from "./QuotaCard";
 
 /** 位置锚在视口右上角：换显示器时卡片跟着角走，不会漂到屏幕中间 */
 const AXES = ["right", "top"];
-/** 夹取用的卡片尺寸估值，只为保证拖不出屏幕，不需要精确 */
-const CARD_W = 140;
-const CARD_H = 100;
-
 const EMPTY_STATE = { data: null, updatedAt: null, error: null };
 
-function clampToViewport(position, viewport) {
+function clampToViewport(position, viewport, box) {
   const { width, height } = getViewportSize(viewport);
   return {
-    right: _.clamp(position.right, VIEW_MARGIN, Math.max(VIEW_MARGIN, width - CARD_W)),
-    top: _.clamp(position.top, VIEW_MARGIN, Math.max(VIEW_MARGIN, height - CARD_H)),
+    right: _.clamp(position.right, VIEW_MARGIN, Math.max(VIEW_MARGIN, width - box.width)),
+    top: _.clamp(position.top, VIEW_MARGIN, Math.max(VIEW_MARGIN, height - box.height)),
   };
 }
 
@@ -88,6 +85,7 @@ const ProviderCard = observer((props) => {
       title={provider.title}
       tint={provider.tint}
       consoleUrl={provider.consoleUrl}
+      size={provider.size}
       format={provider.format}
       position={position}
       state={state}
@@ -118,8 +116,9 @@ const AiWidgetsLayer = observer((props) => {
     const resolved = {};
     AI_PROVIDERS.forEach((provider) => {
       resolved[provider.id] = clampToViewport(
-        stored[provider.id] || provider.defaultPosition,
-        viewport
+        stored[provider.id] || AI_DEFAULT_POSITIONS[provider.id],
+        viewport,
+        widgetSize(provider.size)
       );
     });
     return resolved;
@@ -128,7 +127,8 @@ const AiWidgetsLayer = observer((props) => {
   const handleDragEnd = useMemoizedFn((event) => {
     const id = String(event.active?.id || "");
     const current = positions[id];
-    if (!current) return;
+    const provider = AI_PROVIDERS.find((item) => item.id === id);
+    if (!current || !provider) return;
     const dx = event.delta?.x || 0;
     const dy = event.delta?.y || 0;
     if (dx === 0 && dy === 0) return;
@@ -142,7 +142,8 @@ const AiWidgetsLayer = observer((props) => {
     // right 与 x 方向相反：往左拖 right 变大
     const next = clampToViewport(
       { right: snap(current.right - dx), top: snap(current.top + dy) },
-      viewport
+      viewport,
+      widgetSize(provider.size)
     );
 
     option

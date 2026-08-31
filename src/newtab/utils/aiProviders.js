@@ -1,4 +1,5 @@
 import { formatCountdown } from "./timeText";
+import { stackDefaultPositions } from "./aiWidgetSizes";
 import {
   deepseekQuota,
   currencySymbol,
@@ -51,7 +52,7 @@ export const AI_PROVIDERS = [
     tint: tint(
       "linear-gradient(158deg, rgba(77, 107, 254, 0.74) 0%, rgba(63, 92, 236, 0.68) 52%, rgba(79, 112, 220, 0.72) 100%)"
     ),
-    defaultPosition: { right: 24, top: 20 },
+    size: "small",
     format: (data) => ({
       prefix: currencySymbol(data.currency),
       value: data.totalBalance.toFixed(2),
@@ -75,7 +76,7 @@ export const AI_PROVIDERS = [
     tint: tint(
       "linear-gradient(158deg, rgba(38, 35, 43, 0.72) 0%, rgba(26, 24, 30, 0.66) 52%, rgba(33, 31, 38, 0.7) 100%)"
     ),
-    defaultPosition: { right: 24, top: 148 },
+    size: "small",
     format: (data) =>
       usageView(data.windowPercent ?? data.weeklyPercent, formatCountdown(data.windowReset), [
         percentPart("周", data.weeklyPercent),
@@ -96,7 +97,8 @@ export const AI_PROVIDERS = [
     tint: tint(
       "linear-gradient(158deg, rgba(209, 80, 16, 0.74) 0%, rgba(186, 68, 12, 0.68) 52%, rgba(198, 76, 20, 0.72) 100%)"
     ),
-    defaultPosition: { right: 24, top: 286 },
+    // Factory 三个窗口的副行最长，小卡塞不下，给中卡
+    size: "medium",
     format: (data) =>
       usageView(data.fiveHourPercent ?? data.weeklyPercent, formatCountdown(data.fiveHourReset), [
         percentPart("周", data.weeklyPercent),
@@ -110,3 +112,6 @@ export const AI_PROVIDERS = [
 
 /** 密钥字段从目录派生，避免「加了 provider 忘了加键」 */
 export const AI_OPTION_KEYS = AI_PROVIDERS.map((provider) => provider.optionKey);
+
+/** 默认坐标同样从目录派生：右上角起按各卡高度排成一列 */
+export const AI_DEFAULT_POSITIONS = stackDefaultPositions(AI_PROVIDERS);
