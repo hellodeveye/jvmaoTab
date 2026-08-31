@@ -8,7 +8,8 @@ import styled from "styled-components";
 
    使用方：
    - 祖先节点提供 --frost-bg-* 变量（壁纸 url 与 fit，见 FirstScreen 的 frostStyle）；
-   - 卡片自身内联提供 --frost-shift（卡片在视口中的坐标取负，含拖拽位移）。
+   - 卡片自身内联提供 --frost-shift（卡片在视口中的坐标取负，含拖拽位移）；
+   - 需要品牌着色的卡片可覆盖 --frost-tint（默认沿用主题的 --homeNavBg）。
    卡片只出现在第一壁纸上，故无需处理 bg2。 */
 const Frost = styled.div`
   position: absolute;
@@ -38,7 +39,7 @@ const Frost = styled.div`
     content: "";
     position: absolute;
     inset: 0;
-    background-color: var(--homeNavBg);
+    background: var(--frost-tint, var(--homeNavBg));
   }
 `;
 

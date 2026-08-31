@@ -16,6 +16,10 @@ import {
 } from "~/utils/deepseekBalance";
 
 const DRAG_ID = "ai-balance-widget";
+/* DeepSeek 品牌蓝：取自官网在用的 #426EFE / #4F70DC 一族，主色 #4D6BFE。
+   做成渐变半透明而非纯色块，底下的预模糊壁纸仍能透出一点，避免变成一块贴纸。 */
+const DEEPSEEK_TINT =
+  "linear-gradient(155deg, rgba(77, 107, 254, 0.92) 0%, rgba(66, 110, 254, 0.88) 45%, rgba(79, 112, 220, 0.9) 100%)";
 /** 位置锚在视口右上角：换显示器时组件跟着角走，不会漂到屏幕中间 */
 const DEFAULT_POSITION = { right: 24, top: 20 };
 const EDGE_MARGIN = 8;
@@ -42,8 +46,8 @@ const Card = styled.div`
   min-width: 124px;
   padding: 12px 14px 11px;
   border-radius: 16px;
-  border: 1px solid var(--homeNavBorderColor);
-  color: var(--colorText);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
   cursor: pointer;
   touch-action: none;
   -webkit-user-select: none;
@@ -53,7 +57,7 @@ const Card = styled.div`
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14);
+    box-shadow: 0 6px 20px rgba(38, 62, 168, 0.32);
     .ai-balance-link {
       opacity: 0.7;
     }
@@ -61,7 +65,7 @@ const Card = styled.div`
 
   &.dragging {
     cursor: grabbing;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 14px 34px rgba(38, 62, 168, 0.42);
   }
 `;
 
@@ -73,7 +77,7 @@ const Head = styled.div`
   font-size: 11px;
   line-height: 1;
   letter-spacing: 0.02em;
-  opacity: 0.72;
+  opacity: 0.82;
 `;
 
 const Value = styled.div`
@@ -81,14 +85,15 @@ const Value = styled.div`
   font-size: 26px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: ${(props) => (props.$alert ? "#ff7875" : "inherit")};
+  /* 蓝底上用暖色示警：红字在蓝底上既不醒目也不好读 */
+  color: ${(props) => (props.$alert ? "#ffd2cd" : "inherit")};
 `;
 
 const Age = styled.div`
   margin-top: 7px;
   font-size: 11px;
   line-height: 1;
-  opacity: 0.5;
+  opacity: 0.62;
 `;
 
 const Skeleton = styled.div`
@@ -196,6 +201,7 @@ const AiBalanceCard = (props) => {
         zIndex: isDragging ? 100 : 1,
         willChange: isDragging ? "transform" : "auto",
         "--frost-shift": `translate(${-(origin.left + tx)}px, ${-(origin.top + ty)}px)`,
+        "--frost-tint": DEEPSEEK_TINT,
       }}
     >
       <Frost />
