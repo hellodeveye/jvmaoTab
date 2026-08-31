@@ -16,6 +16,12 @@ const HIGHLIGHT =
 
 const tint = (...layers) => [HIGHLIGHT, ...layers].join(", ");
 
+/* 亮色卡上白色高光是看不见的，换成左上偏白、右下微暗的柔和渐层来做体积 */
+const LIGHT_HIGHLIGHT =
+  "radial-gradient(120% 95% at 0% 0%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 58%), radial-gradient(90% 80% at 100% 100%, rgba(0, 0, 0, 0.06) 0%, rgba(0, 0, 0, 0) 60%)";
+
+const lightTint = (...layers) => [LIGHT_HIGHLIGHT, ...layers].join(", ");
+
 /** 窗口用量到这个比例就该提醒了 */
 const USAGE_ALERT_PERCENT = 90;
 
@@ -96,12 +102,13 @@ export const AI_PROVIDERS = [
     placeholder: "fk-xxxxxxxxxxxx",
     consoleUrl: FACTORY_CONSOLE_URL,
     quota: factoryQuota,
-    /* Factory 是「黑白 + 橙色强调」：官网设计 token 里底色是
-       --dark-base-primary #020202 / --dark-base-secondary #101010，
-       橙色 --accent-100 #ef6f2e 只出现在文字、边框和小色块上，不做底色。
-       所以卡片用近黑底，橙色留给强调元素（这里是三条进度条）。 */
-    tint: tint(
-      "linear-gradient(158deg, rgba(16, 16, 16, 0.8) 0%, rgba(2, 2, 2, 0.74) 52%, rgba(12, 12, 12, 0.78) 100%)"
+    /* Factory 是「黑白 + 橙色强调」，且官网 <html data-theme="light">，
+       CSS 里 light 规则 83 条、dark 只有 7 条——默认就是亮色。
+       底色取 --surface-raised #fff / --surface-page #f5f5f5 / --light-base-primary #eee，
+       橙色 --accent-100 #ef6f2e 只做强调（这里落在三条进度条上），从不做底色。 */
+    scheme: "light",
+    tint: lightTint(
+      "linear-gradient(158deg, rgba(255, 255, 255, 0.82) 0%, rgba(238, 238, 238, 0.74) 52%, rgba(245, 245, 245, 0.78) 100%)"
     ),
     accent: "#ef6f2e",
     /* 三个滚动窗口值得各占一条进度条，中卡的横向空间才用在了信息量上，

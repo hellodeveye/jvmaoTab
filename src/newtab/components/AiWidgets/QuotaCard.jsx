@@ -9,6 +9,33 @@ import { widgetSize } from "~/utils/aiWidgetSizes";
 /** 更新时间与重置倒计时常驻显示，靠这个低频 tick 让它们自己走字 */
 const TICK_MS = 60 * 1000;
 
+/* 卡片配色方案。品牌是深色底就用 dark，亮色底就用 light——
+   文字、描边、进度条轨道、示警色都得跟着翻，只翻底色会读不清。 */
+const SCHEMES = {
+  dark: {
+    text: "#fff",
+    textShadow: "0 1px 2px rgba(18, 30, 78, 0.28)",
+    border: "rgba(255, 255, 255, 0.3)",
+    barTrack: "rgba(255, 255, 255, 0.24)",
+    barFill: "rgba(255, 255, 255, 0.88)",
+    alert: "#ffd2cd",
+    shadow: "rgba(30, 50, 140, 0.3)",
+    shadowDrag: "rgba(30, 50, 140, 0.42)",
+  },
+  light: {
+    text: "#161413",
+    textShadow: "none",
+    border: "rgba(0, 0, 0, 0.1)",
+    barTrack: "rgba(0, 0, 0, 0.12)",
+    barFill: "rgba(0, 0, 0, 0.7)",
+    alert: "#c0392b",
+    shadow: "rgba(0, 0, 0, 0.18)",
+    shadowDrag: "rgba(0, 0, 0, 0.28)",
+  },
+};
+
+const scheme = (name) => SCHEMES[name] || SCHEMES.dark;
+
 /* 定位与拖拽位移走内联 style：拖拽时每帧变化的值放进模板会每帧生成新 class */
 const Card = styled.div`
   position: absolute;
@@ -19,12 +46,12 @@ const Card = styled.div`
   height: ${(props) => props.$size.height}px;
   padding: 16px;
   border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
+  border: 1px solid ${(props) => props.$scheme.border};
+  color: ${(props) => props.$scheme.text};
   cursor: pointer;
   touch-action: none;
-  /* 卡片透出壁纸后白字要在浅色天空上也立得住 */
-  text-shadow: 0 1px 2px rgba(18, 30, 78, 0.28);
+  /* 卡片透出壁纸后文字要在深浅不一的壁纸上都立得住 */
+  text-shadow: ${(props) => props.$scheme.textShadow};
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -32,7 +59,7 @@ const Card = styled.div`
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    box-shadow: 0 10px 28px rgba(30, 50, 140, 0.3);
+    box-shadow: 0 10px 28px ${(props) => props.$scheme.shadow};
     .ai-widget-link {
       opacity: 0.7;
     }
@@ -40,7 +67,7 @@ const Card = styled.div`
 
   &.dragging {
     cursor: grabbing;
-    box-shadow: 0 18px 40px rgba(30, 50, 140, 0.42);
+    box-shadow: 0 18px 40px ${(props) => props.$scheme.shadowDrag};
   }
 `;
 
@@ -69,8 +96,8 @@ const Value = styled.div`
   line-height: 1;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
-  /* 深色底上用暖色示警：红字在这类底色上既不醒目也不好读 */
-  color: ${(props) => (props.$alert ? "#ffd2cd" : "inherit")};
+  /* 示警色随配色方案走：深色底上红字不醒目，亮色底上淡红又太弱 */
+  color: ${(props) => (props.$alert ? props.$scheme.alert : "inherit")};
 `;
 
 /* 单位比数字小一号并对齐基线，是这类组件里最省力的「设计过」的信号 */
@@ -119,7 +146,7 @@ const BarTrack = styled.div`
   flex: 1;
   height: 4px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.24);
+  background: ${(props) => props.$scheme.barTrack};
   overflow: hidden;
 `;
 
@@ -127,9 +154,11 @@ const BarFill = styled.div`
   height: 100%;
   border-radius: inherit;
   width: ${(props) => props.$percent}%;
-  /* 没有品牌强调色的卡片退回白色，不去编一个 */
+  /* 没有品牌强调色的卡片退回配色方案的中性色，不去编一个 */
   background: ${(props) =>
-    props.$alert ? "#ffd2cd" : "var(--widget-accent, rgba(255, 255, 255, 0.88))"};
+    props.$alert
+      ? props.$scheme.alert
+      : `var(--widget-accent, ${props.$scheme.barFill})`};
 `;
 
 const BarValue = styled.span`
@@ -187,6 +216,7 @@ const QuotaCard = (props) => {
   const { id, title, tint, accent, consoleUrl, size, position, state, loading, format, stickled, onRefresh } =
     props;
   const box = widgetSize(size);
+  const palette = scheme(props.scheme);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id });
 
@@ -238,14 +268,14 @@ const QuotaCard = (props) => {
   const renderValue = () => {
     if (unauthorized)
       return (
-        <Value $size={box} $alert $compact>
+        <Value $size={box} $scheme={palette} $alert $compact>
           密钥失效
         </Value>
       );
     if (loading && !data) return <Skeleton />;
-    if (!view) return <Value $size={box} $compact>—</Value>;
+    if (!view) return <Value $size={box} $scheme={palette} $compact>—</Value>;
     return (
-      <Value $size={box} $alert={view.alert}>
+      <Value $size={box} $scheme={palette} $alert={view.alert}>
         {view.prefix ? <Unit $size={box}>{view.prefix}</Unit> : null}
         {view.value}
         {view.suffix ? <Unit $size={box}>{view.suffix}</Unit> : null}
@@ -257,6 +287,7 @@ const QuotaCard = (props) => {
     <Card
       ref={setRefs}
       $size={box}
+      $scheme={palette}
       {...attributes}
       {...listeners}
       className={isDragging ? "dragging" : ""}
@@ -295,10 +326,11 @@ const QuotaCard = (props) => {
             {view.bars.map((bar) => (
               <Bar key={bar.label}>
                 <BarLabel>{bar.label}</BarLabel>
-                <BarTrack>
+                <BarTrack $scheme={palette}>
                   <BarFill
                     $percent={Math.min(100, Math.max(0, bar.percent))}
                     $alert={bar.percent >= 90}
+                    $scheme={palette}
                   />
                 </BarTrack>
                 <BarValue>{Math.round(bar.percent)}%</BarValue>
