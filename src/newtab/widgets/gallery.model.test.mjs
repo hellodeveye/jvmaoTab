@@ -53,7 +53,13 @@ const PATH_STUBS = new Map([
 
 /** 常规扩展名/目录 index 的解析;找不到返回 null 交回 esbuild 报错 */
 function resolveReal(base) {
-  for (const c of [base, `${base}.js`, `${base}.jsx`, path.join(base, "index.js"), path.join(base, "index.jsx")]) {
+  for (const c of [
+    base,
+    `${base}.js`,
+    `${base}.jsx`,
+    path.join(base, "index.js"),
+    path.join(base, "index.jsx"),
+  ]) {
     try {
       if (fs.statSync(c).isFile()) return c;
     } catch {}
@@ -71,7 +77,7 @@ const result = await build({
       } from "~/widgets/instances";
       export { galleryCards, applyDedupe } from "~/widgets/galleryModel";
       export {
-        CARD_H, PREVIEW_SLOT_H, previewBox, frontStackHeight,
+        GALLERY, BLOCK_MIN,
       } from "~/widgets/galleryLayout";
       export { WIDGET_SIZES } from "~/widgets/sizes";
       export { __setRegistry } from "~/widgets/registry";
@@ -142,11 +148,14 @@ function singleList() {
   const cards = m.galleryCards(
     defs,
     [inst("a", "1"), inst("b", "2"), inst("b", "3"), inst("ghost", "4")],
-    {}
+    {},
   );
 
   // 每种类型恰好一张,按定义顺序
-  assert.deepEqual(cards.map((c) => c.definition.type), ["a", "b", "c"]);
+  assert.deepEqual(
+    cards.map((c) => c.definition.type),
+    ["a", "b", "c"],
+  );
   const [ca, cb, cc] = cards;
 
   // 已添加卡挂「最早一张」实例
@@ -178,7 +187,10 @@ function singleList() {
   assert.equal(cg.attention, true);
 
   // 源码断言:单一栅格,不再有已添加/组件库/分组标题
-  const src = fs.readFileSync(new URL("../scenes/widgets/WidgetGallery.jsx", import.meta.url).pathname, "utf8");
+  const src = fs.readFileSync(
+    new URL("../scenes/widgets/WidgetGallery.jsx", import.meta.url).pathname,
+    "utf8",
+  );
   assert.ok(!src.includes("GROUPS"), "不应再有分组聚合");
   assert.ok(!/<Section[\s>/]|<Group[\s>/]/.test(src), "不应再有已添加/组件库/分组标题渲染");
   assert.equal((src.match(/<Grid>/g) || []).length, 1, "整页应只有一个栅格");
@@ -224,7 +236,10 @@ async function dedup() {
     inst("a", "4"),
     inst("x", "5"),
   ]);
-  assert.deepEqual(r.instances.map((i) => i.id), ["1", "2"]);
+  assert.deepEqual(
+    r.instances.map((i) => i.id),
+    ["1", "2"],
+  );
   assert.equal(r.changed, true);
   assert.deepEqual(r.droppedIds, ["3", "4", "5"]);
 
@@ -251,25 +266,47 @@ async function dedup() {
   assert.equal(await m.applyDedupe(option, r), true);
   assert.equal(writes.length, 1);
   assert.equal(writes[0][0], m.WIDGETS_KEY);
-  assert.deepEqual(writes[0][1].map((i) => i.id), ["1", "2"]);
+  assert.deepEqual(
+    writes[0][1].map((i) => i.id),
+    ["1", "2"],
+  );
   assert.deepEqual(m.__dropped(), ["3", "4", "5"]);
 }
 
-/** AC4:大档画廊卡不再顶满/溢出 —— 预览留边,正面内容落在定高内 */
+/** AC4:行内紧凑填充版式契约 —— 预览即实物(真实卡盒),块宽由卡盒推导、角标锚预览角。
+    断言真实渲染路径(widgetSize/BLOCK_MIN),不是某个已废弃的预览缩放语义。 */
 function overflow() {
-  for (const [name, box] of Object.entries(m.WIDGET_SIZES)) {
-    const pv = m.previewBox(box);
-    assert.ok(
-      pv.height <= m.PREVIEW_SLOT_H - 12,
-      `${name} 预览高 ${pv.height} 应 ≤ 预览槽 ${m.PREVIEW_SLOT_H}−12,不许顶满`
-    );
-  }
-  // 正面最坏情况(尺寸行渲染):上下内边距 + 预览槽 + 标题 + 两行说明 + 尺寸行
-  const stack = m.frontStackHeight(true);
-  assert.ok(
-    stack <= m.CARD_H - 8,
-    `正面内容 ${stack} 应 ≤ 卡片定高 ${m.CARD_H}−8,底部要有留白`
+  // 块宽下限是推导值:大卡真实宽 + 两侧留白,不许再拍一个固定数
+  assert.equal(
+    m.BLOCK_MIN,
+    m.WIDGET_SIZES.large.width + m.GALLERY.cardPadding * 2,
+    "BLOCK_MIN 应 = 大卡宽 + 2×cardPadding(改 SCALE 自动跟随)",
   );
+
+  // 缩略图按真实尺寸渲染:WidgetPreview 直接用真实卡盒与 M 度量,不再有独立缩放层
+  const prevSrc = fs.readFileSync(
+    new URL("../widgets/WidgetPreview.jsx", import.meta.url).pathname,
+    "utf8",
+  );
+  assert.ok(prevSrc.includes("widgetSize(size)"), "预览应由 widgetSize(档位) 取真实卡盒");
+  assert.ok(!prevSrc.includes("scale"), "预览不许再有独立缩放系数,要实物原大");
+
+  // 页面接线:行内紧凑填充(flex-wrap),块宽/间距消费这里的数据
+  const src = fs.readFileSync(
+    new URL("../scenes/widgets/WidgetGallery.jsx", import.meta.url).pathname,
+    "utf8",
+  );
+  assert.ok(src.includes("flex-wrap"), "页面应改为 flex-wrap 行内紧凑填充");
+  assert.ok(!src.includes("column-width"), "不许回到多列瀑布(column-width)");
+  assert.ok(src.includes("BLOCK_MIN"), "设置面宽度应由 BLOCK_MIN 推导,不再写死");
+  assert.ok(src.includes("widgetSize(size)"), "正面块宽应取 widgetSize(档位)");
+  assert.ok(src.includes("GALLERY.columnGap"), "块间距应取 GALLERY.columnGap");
+
+  // 删除/设置角标:放进 Tile 锚预览右上角,随块 hover 显现;背面返回钮常驻
+  const tile = src.slice(src.indexOf("<Tile>"), src.indexOf("</Tile>"));
+  assert.ok(tile.includes("WidgetPreview"), "Tile 内应渲染预览缩略图");
+  assert.ok(tile.includes("<Corner $reveal"), "角标应放进 Tile(锚预览右上角)且带 $reveal");
+  assert.ok(src.includes("&:hover ${Corner}"), "角标应随块 hover 显现");
 }
 
 /** AC5:既有实例函数行为锁定为回归基线 */
@@ -284,7 +321,10 @@ function regression() {
   assert.deepEqual(m.listInstances(undefined), []);
   assert.deepEqual(m.listInstances({}), []);
   const item = { widgets: [inst("a", "1"), inst("ghost", "2"), inst("b", "3")] };
-  assert.deepEqual(m.listInstances(item).map((i) => i.id), ["1", "3"]);
+  assert.deepEqual(
+    m.listInstances(item).map((i) => i.id),
+    ["1", "3"],
+  );
 
   // createInstance 的档位回落:不在 sizes 里就用第一档
   const weird = def("w", { sizes: ["large"] });
@@ -304,11 +344,17 @@ function regression() {
 
   // removeInstance:按 id 过滤
   const removed = m.removeInstance(base, "1");
-  assert.deepEqual(removed.map((i) => i.id), ["2"]);
+  assert.deepEqual(
+    removed.map((i) => i.id),
+    ["2"],
+  );
 
   // 去重是读取行为的一部分:重复实例读出来就只剩最早一张
   const dupItem = { widgets: [inst("a", "1"), inst("a", "9"), inst("b", "2")] };
-  assert.deepEqual(m.listInstances(dupItem).map((i) => i.id), ["1", "2"]);
+  assert.deepEqual(
+    m.listInstances(dupItem).map((i) => i.id),
+    ["1", "2"],
+  );
 }
 
 const sections = {

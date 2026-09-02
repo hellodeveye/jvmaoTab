@@ -1,0 +1,19 @@
+{
+  "planner": {
+    "provider": "kimi-coding",
+    "model": "k3"
+  },
+  "executor": {
+    "provider": "postdare",
+    "model": "deepseek-v4-flash",
+    "thinking": "max"
+  },
+  "verifier": {
+    "provider": "deepseek",
+    "model": "deepseek-v4-flash"
+  },
+  "escalator": {
+    "provider": "postdare",
+    "model": "glm-5.3-flash"
+  }
+}
