@@ -37,6 +37,14 @@ const APPEARANCE = {
     ),
     accent: "#ef6f2e",
   },
+  antix: {
+    /* Antix 官网（antigma.ai）是深色底，没有明确的单一品牌色；
+       余额卡延续 DeepSeek 的冷色深底，但色相偏青，和 DeepSeek 的纯蓝分开。 */
+    sizes: ["small"],
+    tint: tint(
+      "linear-gradient(158deg, rgba(34, 84, 88, 0.74) 0%, rgba(26, 66, 70, 0.68) 52%, rgba(38, 94, 98, 0.72) 100%)"
+    ),
+  },
 };
 
 /**

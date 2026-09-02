@@ -1,5 +1,6 @@
 import { AI_WIDGETS } from "./ai";
 import { TODO_WIDGET } from "./todo";
+import { WEATHER_WIDGET } from "./weather";
 
 /**
  * 首屏组件注册表。加一种新组件 = 新建一个文件夹（定义 + 渲染组件 + 可选的 settings），
@@ -29,7 +30,7 @@ import { TODO_WIDGET } from "./todo";
  *                 首选项页优先用它们
  *   Preview?      自定义组件库缩略图，缺省画通用外形图
  */
-export const WIDGETS = [...AI_WIDGETS, TODO_WIDGET];
+export const WIDGETS = [...AI_WIDGETS, TODO_WIDGET, WEATHER_WIDGET];
 
 const index = new Map();
 WIDGETS.forEach((widget) => {

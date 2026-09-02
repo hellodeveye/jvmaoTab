@@ -11,10 +11,38 @@ function isValidInstance(instance) {
   return !!(instance?.id && getWidget(instance.type));
 }
 
+/**
+ * 去重:每种类型只保留数组中最早的一张(添加是追加,所以前面的更早)，
+ * 顺序不变。返回被丢实例的 id，由调用方决定要不要落地清理。
+ */
+export function dedupeInstances(instances) {
+  const seen = new Set();
+  const kept = [];
+  const droppedIds = [];
+  for (const instance of instances) {
+    if (seen.has(instance.type)) {
+      droppedIds.push(instance.id);
+      continue;
+    }
+    seen.add(instance.type);
+    kept.push(toPlain(instance));
+  }
+  return { instances: kept, changed: droppedIds.length > 0, droppedIds };
+}
+
+/**
+ * 读取入口(带去重诊断):存储里留着的重复实例在这里被拦住，
+ * 视图、首屏、导出前置看到的都是每种类型至多一张。
+ */
+export function listInstancesWithDedup(item) {
+  const raw = item?.[WIDGETS_KEY];
+  const valid = Array.isArray(raw) ? raw.filter(isValidInstance) : [];
+  return dedupeInstances(valid);
+}
+
 /** 已添加的实例。type 已不在注册表里的（删过的组件、改过的 type）直接丢掉 */
 export function listInstances(item) {
-  const raw = item?.[WIDGETS_KEY];
-  return Array.isArray(raw) ? raw.filter(isValidInstance) : [];
+  return listInstancesWithDedup(item).instances;
 }
 
 /** 首屏真正渲染的实例：前置条件仍满足（清了密钥的卡片自动下屏，不必手动移除） */
@@ -37,6 +65,17 @@ export function createInstance(definition, size, position) {
     position,
     config: { ...(definition.defaultConfig || {}) },
   };
+}
+
+/**
+ * 数据层添加入口:同 type 已存在就原样返回 —— 一种组件只允许一个实例。
+ * UI 的禁用只是提示，这里是真正的栅栏:存储直写、未来的新入口都过这里。
+ */
+export function addInstance(instances, definition, size, position) {
+  if (instances.some((instance) => instance.type === definition.type)) {
+    return instances;
+  }
+  return [...instances.map(toPlain), createInstance(definition, size, position)];
 }
 
 export function updateInstance(instances, id, patch) {

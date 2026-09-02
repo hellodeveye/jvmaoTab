@@ -167,7 +167,8 @@ const showsBars = (size) => size !== "small";
 /**
  * AI 额度卡片。
  * 四种状态（加载中 / 正常 / 陈旧 / 密钥失效）全部在这里判定；
- * provider 只提供一个纯函数 format(data) → { prefix?, value, suffix?, alert, meta, bars? }，
+ * provider 只提供一个纯函数 format(data, size?) → { prefix?, value, suffix?, alert, meta, bars? }
+ * （个别 provider 的 meta 文案随尺寸变：中卡的进度条里已有的用量，meta 不再重复），
  * 于是卡片的字号体系不会泄漏给 provider。format 在渲染时调用而非缓存，
  * 里面的倒计时才会随 tick 自己走字。
  *
@@ -202,7 +203,7 @@ const QuotaWidget = observer((props) => {
 
   const { data, updatedAt, error } = state;
   const unauthorized = error?.type === "unauthorized";
-  const view = data ? provider.format(data) : null;
+  const view = data ? provider.format(data, instance.size) : null;
   const age = unauthorized ? null : formatAge(updatedAt);
 
   const bars = showsBars(instance.size) ? view?.bars : null;

@@ -2,7 +2,7 @@ import { lightTint } from "../tints";
 import TodoWidget from "./TodoWidget";
 
 /**
- * 待办清单。可以加任意多个实例（工作 / 生活各一张），靠 config.title 区分。
+ * 待办清单。每种组件全局只能添加一张；清单名显示在卡片标题上。
  * 没有类型级设置，所以组件库里直接就能添加。
  */
 export const TODO_WIDGET = {
@@ -23,7 +23,7 @@ export const TODO_WIDGET = {
       label: "清单名称",
       type: "text",
       placeholder: "工作",
-      hint: "显示在卡片标题上，用来区分多个清单。",
+      hint: "显示在卡片标题上。",
     },
   ],
   defaultConfig: { title: "" },

@@ -2,8 +2,10 @@ import React from "react";
 import styled from "styled-components";
 import { observer } from "mobx-react";
 import { useMemoizedFn } from "ahooks";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconCheck, IconCopy, IconX } from "@tabler/icons-react";
 import { getID } from "~/utils";
+import useStores from "~/hooks/useStores";
+import { todoMarkdown } from "./markdown";
 import WidgetCard, { scheme } from "../WidgetCard";
 import { useWidgetData } from "../storage";
 import { widgetSize, WIDGET_METRICS as M } from "../sizes";
@@ -27,6 +29,9 @@ function listCapacity(size) {
     M.metaGap;
   return Math.max(1, Math.floor((body + ROW_GAP) / (ROW_H + ROW_GAP)));
 }
+
+/* 完成态底色:暖黄纸卡上用「深一档的黄」做勾选底,比黑底柔和也立得住 */
+const DONE_FILL = "#d4a017";
 
 const List = styled.div`
   margin-top: ${TOP_GAP}px;
@@ -59,9 +64,10 @@ const Box = styled.button`
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  border: 1px solid ${(props) => props.$scheme.border};
+  border: 1px solid
+    ${(props) => (props.$done ? DONE_FILL : props.$scheme.border)};
   background: ${(props) =>
-    props.$done ? props.$scheme.barFill : "transparent"};
+    props.$done ? DONE_FILL : "transparent"};
   color: ${(props) => props.$scheme.text};
   cursor: pointer;
 `;
@@ -72,8 +78,41 @@ const Text = styled.span`
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  cursor: text;
   opacity: ${(props) => (props.$done ? 0.45 : 0.9)};
   text-decoration: ${(props) => (props.$done ? "line-through" : "none")};
+`;
+
+/* 行内编辑输入框:贴着行高,不换行不撑破行 */
+const Editor = styled.input`
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid ${(props) => props.$scheme.border};
+  background: none;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1;
+  outline: none;
+  caret-color: currentColor;
+`;
+
+/* 右上角复制按钮:悬停显现,与 QuotaWidget 的外链一致 */
+const CopyBtn = styled.button`
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 1 !important;
+  }
 `;
 
 const Remove = styled.button`
@@ -155,8 +194,12 @@ const stopDrag = (e) => e.stopPropagation();
  */
 const TodoWidget = observer((props) => {
   const { instance, definition, position } = props;
+  const { tools } = useStores();
   const [data, setData] = useWidgetData(instance.id, EMPTY);
   const [draft, setDraft] = React.useState("");
+  /* 行内编辑:一次只编一行,文本放 state 里好拿 */
+  const [editingId, setEditingId] = React.useState(null);
+  const [editText, setEditText] = React.useState("");
   const palette = scheme(definition.scheme);
   const box = widgetSize(instance.size);
 
@@ -194,6 +237,37 @@ const TodoWidget = observer((props) => {
     setDraft("");
   });
 
+  const startEdit = useMemoizedFn((item) => {
+    setEditingId(item.id);
+    setEditText(item.text);
+  });
+
+  const saveEdit = useMemoizedFn((id) => {
+    setEditingId(null);
+    const text = editText.trim();
+    if (!text) {
+      // 内容被清空 → 删掉这条待办
+      remove(id);
+      return;
+    }
+    setData((current) => ({
+      ...current,
+      items: (current.items || []).map((item) =>
+        item.id === id ? { ...item, text } : item
+      ),
+    }));
+  });
+
+  const cancelEdit = useMemoizedFn(() => setEditingId(null));
+
+  const copy = useMemoizedFn(() => {
+    // 复制的是屏幕上的顺序(未完成的在前)
+    navigator.clipboard
+      ?.writeText(todoMarkdown(items))
+      .then(() => tools.success("已复制到剪贴板"))
+      .catch(() => {});
+  });
+
   if (instance.size === "small") {
     const peek = undone.slice(0, 2);
     return (
@@ -214,7 +288,22 @@ const TodoWidget = observer((props) => {
   const visible = overflow ? items.slice(0, capacity - 1) : items;
 
   return (
-    <WidgetCard instance={instance} definition={definition} position={position}>
+    <WidgetCard
+      instance={instance}
+      definition={definition}
+      position={position}
+      action={
+        <CopyBtn
+          className="widget-head-action"
+          type="button"
+          title="复制为 Markdown"
+          onPointerDown={stopDrag}
+          onClick={copy}
+        >
+          <IconCopy size={13} stroke={1.8} />
+        </CopyBtn>
+      }
+    >
       <List>
         {visible.map((item) => (
           <Row key={item.id}>
@@ -228,7 +317,29 @@ const TodoWidget = observer((props) => {
             >
               {item.done ? <IconCheck size={9} stroke={3} /> : null}
             </Box>
-            <Text $done={item.done}>{item.text}</Text>
+            {item.id === editingId ? (
+              <Editor
+                $scheme={palette}
+                autoFocus
+                value={editText}
+                onPointerDown={stopDrag}
+                onChange={(e) => setEditText(e.target.value)}
+                onBlur={() => saveEdit(item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") cancelEdit();
+                  else if (e.key === "Enter") saveEdit(item.id);
+                }}
+              />
+            ) : (
+              <Text
+                $done={item.done}
+                title="点击编辑"
+                onPointerDown={stopDrag}
+                onClick={() => startEdit(item)}
+              >
+                {item.text}
+              </Text>
+            )}
             <Remove
               className="todo-remove"
               type="button"

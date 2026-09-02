@@ -10,8 +10,10 @@ const CACHE_TTL_MS = 15 * 60 * 1000;
 /**
  * 带超时的 JSON GET。失败时抛出带 type 的错误：
  * unauthorized | timeout | http | network
+ * headers 可覆盖默认鉴权头：Antix 一类走 cookie 的 provider 传
+ * { Cookie: "antix_session=" }，值会自动拼上密钥；此时 apiKey 本身不进 Bearer。
  */
-export async function requestJson(url, apiKey) {
+export async function requestJson(url, apiKey, headers) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -20,7 +22,8 @@ export async function requestJson(url, apiKey) {
     response = await fetch(url, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        ...headers,
         Accept: "application/json",
       },
       signal: controller.signal,
@@ -110,8 +113,20 @@ export async function loadWithCache(cacheKey, fetcher, { force = false } = {}) {
  * 一个额度 provider 的取数三件套。各 provider 只需提供端点与 normalize，
  * 请求、超时、错误分型、缓存策略全部落在这里。
  */
-export function defineProvider({ cacheKey, url, normalize }) {
-  const verify = async (apiKey) => normalize(await requestJson(url, apiKey));
+export function defineProvider({ cacheKey, url, normalize, headers }) {
+  const verify = async (apiKey) =>
+    normalize(
+      await requestJson(
+        url,
+        // cookie 型鉴权把凭据放进 headers 模板，不走 Bearer
+        headers ? null : apiKey,
+        headers
+          ? Object.fromEntries(
+              Object.entries(headers).map(([k, v]) => [k, `${v}${apiKey}`])
+            )
+          : undefined
+      )
+    );
   return {
     /** 跳过缓存直接请求，用于首选项里的「测试并保存」 */
     verify,

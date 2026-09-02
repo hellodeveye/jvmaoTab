@@ -3,33 +3,22 @@ import { observer } from "mobx-react";
 import styled from "styled-components";
 import { IconPlus, IconMinus, IconSettings, IconArrowBackUp } from "@tabler/icons-react";
 import useStores from "~/hooks/useStores";
-import { WIDGETS, getWidget } from "~/widgets/registry";
+import { WIDGETS } from "~/widgets/registry";
 import {
-  listInstances,
-  createInstance,
+  WIDGETS_KEY,
+  addInstance,
+  listInstancesWithDedup,
   updateInstance,
   updateInstanceConfig,
   removeInstance,
-  WIDGETS_KEY,
 } from "~/widgets/instances";
-import { toPlain } from "~/widgets/plain";
-import {
-  checkAvailable,
-  settingValue,
-  hasSettings,
-  hasConfig,
-} from "~/widgets/settings";
+import { galleryCards, applyDedupe } from "~/widgets/galleryModel";
 import { placeNewWidget } from "~/widgets/layout";
 import { dropWidgetData } from "~/widgets/storage";
 import WidgetPreview from "~/widgets/WidgetPreview";
 import SettingsForm from "~/widgets/SettingsForm";
 import { SIZE_LABELS } from "~/widgets/sizes";
-
-/* 卡片正反面绝对定位叠在一起，高度就必须先定死。
-   正面 = 预览槽 + 标题 + 两行说明 + 尺寸档 + 上下内边距；
-   背面（一个表单）比这矮，超了也有 overflow 兜着。 */
-const PREVIEW_H = 176;
-const CARD_H = PREVIEW_H + 100;
+import { cardHeightFor, GALLERY, previewSlotFor } from "~/widgets/galleryLayout";
 
 const Warp = styled.section`
   width: 100%;
@@ -49,35 +38,32 @@ const PageTitle = styled.h1`
   margin: 0 0 4px;
 `;
 
+/* 一句话说明「卡上挑档位、首屏自由摆」:尺寸在组件库里换,
+   真正像 Mac 桌面那样随手摆是首屏的事(见首屏拖拽),不是这页。 */
 const PageDesc = styled.div`
   font-size: 12px;
   color: var(--colorTextSecondary);
   line-height: 1.6;
 `;
 
-const Section = styled.div`
-  margin: 32px 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-`;
-
-const Group = styled.div`
-  margin: 20px 0 10px;
-  font-size: 11px;
-  color: var(--colorTextSecondary);
-`;
-
+/* 单列表:整页一个栅格,每种组件恰好一张卡。
+   以前分「已添加 / 组件库」两栏,加过的组件就会在页面上出现两遍;
+   现在卡片自己带状态,未添加显 +,已添加可移除。
+   列宽下限按「大档预览(220px)两侧也能留边」定;卡高不统一——大档 tile
+   加高(cardHeightFor),像桌面那样让大 widget 占更大的块,而不是硬塞小卡。 */
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
 `;
 
-/* 翻转靠 3D：父级给透视，内层整体转 180°，两面各自背面不可见。
-   不可见的那一面还是会吃点击，所以要连 pointer-events 一起关掉。 */
+/* 翻转靠 3D:父级给透视,内层整体转 180°,两面各自背面不可见。
+   不可见的那一面还是会吃点击,所以要连 pointer-events 一起关掉。
+   高随档位走:小/中 296,大 364(见 galleryLayout 的两级 tile 说明)。 */
 const Flip = styled.div`
   position: relative;
-  height: ${CARD_H}px;
+  height: ${(props) => props.$h}px;
   perspective: 1200px;
 `;
 
@@ -94,7 +80,7 @@ const Face = styled.div`
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 14px;
+  padding: ${GALLERY.cardPadding}px;
   box-sizing: border-box;
   border-radius: 14px;
   border: 1px solid var(--colorBorderSecondary, rgba(0, 0, 0, 0.06));
@@ -119,7 +105,7 @@ const Back = styled(Face)`
   overflow-y: auto;
 `;
 
-/* 角标按钮常驻而不是 hover 才出现：这一页的全部操作就它们两个，
+/* 角标按钮常驻而不是 hover 才出现:这一页的全部操作就它们两个,
    藏起来只会让人不知道从哪下手 */
 const Corner = styled.div`
   position: absolute;
@@ -160,37 +146,37 @@ const Round = styled.button`
 `;
 
 const PreviewSlot = styled.div`
-  height: ${PREVIEW_H}px;
+  height: ${(props) => props.$h}px;
   display: flex;
   align-items: center;
   justify-content: center;
 `;
 
 const Title = styled.div`
-  font-size: 13px;
+  font-size: ${GALLERY.titleFontSize}px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: ${GALLERY.titleLineHeight};
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 `;
 
 const Desc = styled.div`
-  margin-top: 2px;
-  font-size: 11px;
+  margin-top: ${GALLERY.descMarginTop}px;
+  font-size: ${GALLERY.descFontSize}px;
   color: var(--colorTextSecondary);
-  line-height: 1.5;
-  /* 说明最多两行，卡片高度才对得齐 */
+  line-height: ${GALLERY.descLineHeight};
+  /* 说明最多两行,卡片高度才对得齐 */
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: ${GALLERY.descLines};
   -webkit-box-orient: vertical;
   overflow: hidden;
 `;
 
-/* 尺寸档不用 Segmented：那个白底方块组在这种卡片里太重，
-   降成一排文字，选中的实一点就够了 */
+/* 尺寸档不用 Segmented:那个白底方块组在这种卡片里太重,
+   降成一排文字,选中的实一点就够了 */
 const Sizes = styled.div`
-  margin-top: 8px;
+  margin-top: ${GALLERY.sizesMarginTop}px;
   display: flex;
   gap: 10px;
 `;
@@ -199,7 +185,7 @@ const SizeBtn = styled.button`
   padding: 0;
   border: 0;
   background: none;
-  font-size: 12px;
+  font-size: ${GALLERY.sizeBtnFontSize}px;
   line-height: 1;
   cursor: pointer;
   color: var(--colorText);
@@ -219,6 +205,17 @@ const BackTitle = styled.div`
   padding-right: 28px;
 `;
 
+/* 背面同时有类型设置(如密钥)和此卡设置(如清单名)时,用小标题分开 */
+const BackLabel = styled.div`
+  font-size: 11px;
+  color: var(--colorTextSecondary);
+  margin: 12px 0 6px;
+
+  & + * {
+    margin-top: 0;
+  }
+`;
+
 const Empty = styled.div`
   font-size: 12px;
   color: var(--colorTextSecondary);
@@ -231,36 +228,39 @@ const Footer = styled.div`
   line-height: 1.6;
 `;
 
-/** 组件库按 group 分段，同段里的卡片共用一个栅格 */
-const GROUPS = WIDGETS.reduce((out, definition) => {
-  const last = out[out.length - 1];
-  if (last && last.name === definition.group) last.items.push(definition);
-  else out.push({ name: definition.group, items: [definition] });
-  return out;
-}, []);
-
-/** 一张卡：正面是组件本身，背面是它的设置，右上角一个 + 或 − */
+/** 一张卡:正面是组件本身,背面是它的设置,右上角一个 + 或 − */
 const GalleryCard = (props) => {
   const {
-    definition,
+    card,
     size,
-    onSize,
-    action,
-    actionDisabled,
-    actionTitle,
-    title,
-    desc,
-    schema,
-    values,
-    onSave,
-    onClear,
-    settingsAttention,
+    onResize,
+    onAdd,
+    onRemove,
+    onSaveSetting,
+    onClearSetting,
+    onSaveConfig,
+    onClearConfig,
   } = props;
+  const {
+    definition,
+    instance,
+    added,
+    canAdd,
+    addReason,
+    attention,
+    settingsSchema,
+    configSchema,
+    settingsValues,
+    configValues,
+  } = card;
   const [flipped, setFlipped] = React.useState(false);
-  const canFlip = schema && schema.length > 0;
+  const canFlip = !!(settingsSchema || configSchema);
+  const title = added ? definition.instanceTitle?.(instance) || definition.title : definition.title;
+  const tileH = cardHeightFor(size);
+  const slotH = previewSlotFor(size);
 
   return (
-    <Flip>
+    <Flip $h={tileH}>
       <Inner $flipped={flipped}>
         <Front $flipped={flipped}>
           <Corner>
@@ -268,26 +268,36 @@ const GalleryCard = (props) => {
               <Round
                 type="button"
                 title="设置"
-                $attention={settingsAttention}
+                $attention={attention}
                 onClick={() => setFlipped(true)}
               >
                 <IconSettings size={13} stroke={1.8} />
               </Round>
             ) : null}
-            <Round
-              type="button"
-              title={actionTitle}
-              disabled={actionDisabled}
-              onClick={action.onClick}
-            >
-              {action.icon}
-            </Round>
+            {added ? (
+              <Round type="button" title="从首屏移除" onClick={onRemove}>
+                <IconMinus size={14} stroke={2} />
+              </Round>
+            ) : (
+              <Round
+                type="button"
+                title={addReason}
+                disabled={!canAdd}
+                onClick={onAdd}
+              >
+                <IconPlus size={14} stroke={2} />
+              </Round>
+            )}
           </Corner>
-          <PreviewSlot>
-            <WidgetPreview definition={definition} size={size} dim={actionDisabled} />
+          <PreviewSlot $h={slotH}>
+            <WidgetPreview
+              definition={definition}
+              size={size}
+              dim={!added && !canAdd}
+            />
           </PreviewSlot>
           <Title>{title}</Title>
-          <Desc>{desc}</Desc>
+          <Desc>{definition.summary}</Desc>
           {definition.sizes.length > 1 ? (
             <Sizes>
               {definition.sizes.map((one) => (
@@ -295,7 +305,7 @@ const GalleryCard = (props) => {
                   key={one}
                   type="button"
                   $active={one === size}
-                  onClick={() => onSize(one)}
+                  onClick={() => onResize(one)}
                 >
                   {SIZE_LABELS[one]}
                 </SizeBtn>
@@ -310,12 +320,22 @@ const GalleryCard = (props) => {
             </Round>
           </Corner>
           <BackTitle>{title}</BackTitle>
-          {canFlip ? (
+          {settingsSchema && configSchema ? <BackLabel>组件设置</BackLabel> : null}
+          {settingsSchema ? (
             <SettingsForm
-              schema={schema}
-              values={values}
-              onSave={onSave}
-              onClear={onClear}
+              schema={settingsSchema}
+              values={settingsValues}
+              onSave={onSaveSetting}
+              onClear={onClearSetting}
+            />
+          ) : null}
+          {settingsSchema && configSchema ? <BackLabel>此卡设置</BackLabel> : null}
+          {configSchema ? (
+            <SettingsForm
+              schema={configSchema}
+              values={configValues}
+              onSave={onSaveConfig}
+              onClear={onClearConfig}
             />
           ) : null}
         </Back>
@@ -325,16 +345,19 @@ const GalleryCard = (props) => {
 };
 
 /**
- * 小组件页：上面是已添加的实例（右上角 − 移除），下面是组件库（右上角 + 添加）。
- * 这一页对组件种类是无知的：卡片、缩略图、可用性、设置表单全部走注册表字段，
+ * 小组件页:整页一个栅格,每种组件恰好一张卡(模型见 galleryModel)。
+ * 这一页对组件种类是无知的:卡片、缩略图、可用性、设置表单全部走注册表字段,
  * 以后加待办、天气之类的组件都不需要再动这里。
  */
 const WidgetGallery = () => {
   const { option } = useStores();
   const item = option.item;
-  const instances = listInstances(item);
+  // 读出即去重:存储里留着的重复实例在这里被挡住,视图永远每种类型至多一张
+  const dedup = listInstancesWithDedup(item);
+  const instances = dedup.instances;
+  const cards = galleryCards(WIDGETS, instances, item);
 
-  // 组件库里每种组件当前选中的档位；没选过就用定义里的第一档
+  // 尚未添加的卡在组件库里选中的档位;没选过就用定义里的第一档
   const [picked, setPicked] = React.useState({});
 
   const save = (next) =>
@@ -342,99 +365,64 @@ const WidgetGallery = () => {
       console.error(`[${WIDGETS_KEY}] save failed:`, err);
     });
 
-  const add = (definition) => {
-    const size = picked[definition.type] || definition.sizes[0];
-    const position = placeNewWidget(instances, size);
-    save([...instances.map(toPlain), createInstance(definition, size, position)]);
+  // 打开本页时把去重结果落一次盘,被丢实例的数据行(待办条目等)一起清掉;
+  // 无重复时 applyDedupe 是 no-op,读写都不发生
+  React.useEffect(() => {
+    applyDedupe(option, listInstancesWithDedup(option.item)).catch((err) => {
+      console.error(`[${WIDGETS_KEY}] dedupe failed:`, err);
+    });
+  }, [option, item]);
+
+  const add = (card) => {
+    const type = card.definition.type;
+    const size = picked[type] || card.definition.sizes[0];
+    save(addInstance(instances, card.definition, size, placeNewWidget(instances, size)));
   };
 
-  const drop = async (instance) => {
-    await save(removeInstance(instances, instance.id));
-    // 实例没了，它的数据行也不该留在库里和导出文件里
-    await dropWidgetData(option, instance.id);
+  const drop = async (card) => {
+    const id = card.instance.id;
+    await save(removeInstance(instances, id));
+    // 实例没了,它的数据行也不该留在库里和导出文件里
+    await dropWidgetData(option, id);
   };
-
-  const saveSetting = (key, value) => option.setItem(key, value);
-
-  const settingValues = (definition) =>
-    Object.fromEntries(
-      (definition.settings || []).map((field) => [field.key, settingValue(field, item)])
-    );
 
   return (
     <Warp className="widget-workspace">
       <PageTitle>小组件</PageTitle>
-      <PageDesc>添加到首屏右上角，可以直接拖动调整位置。</PageDesc>
+      <PageDesc>
+        在卡上挑尺寸档位，加到首屏后可像 Mac 桌面一样随意拖动摆放。
+      </PageDesc>
 
-      {instances.length > 0 ? (
-        <>
-          <Section>已添加</Section>
-          <Grid>
-            {instances.map((instance) => {
-              const definition = getWidget(instance.type);
-              return (
-                <GalleryCard
-                  key={instance.id}
-                  definition={definition}
-                  size={instance.size}
-                  onSize={(next) =>
-                    save(updateInstance(instances, instance.id, { size: next }))
-                  }
-                  action={{
-                    icon: <IconMinus size={14} stroke={2} />,
-                    onClick: () => drop(instance),
-                  }}
-                  actionTitle="从首屏移除"
-                  title={definition.instanceTitle?.(instance) || definition.title}
-                  desc={definition.summary}
-                  schema={hasConfig(definition) ? definition.configSchema : null}
-                  values={toPlain(instance.config || {})}
-                  onSave={(key, value) =>
-                    save(updateInstanceConfig(instances, instance.id, key, value))
-                  }
-                  onClear={(key) =>
-                    save(updateInstanceConfig(instances, instance.id, key, ""))
-                  }
-                />
-              );
-            })}
-          </Grid>
-        </>
-      ) : null}
-
-      <Section>组件库</Section>
-      {GROUPS.map((group) => (
-        <React.Fragment key={group.name}>
-          <Group>{group.name}</Group>
-          <Grid>
-            {group.items.map((definition) => {
-              const availability = checkAvailable(definition, item);
-              const size = picked[definition.type] || definition.sizes[0];
-              return (
-                <GalleryCard
-                  key={definition.type}
-                  definition={definition}
-                  size={size}
-                  onSize={(next) => setPicked({ ...picked, [definition.type]: next })}
-                  action={{
-                    icon: <IconPlus size={14} stroke={2} />,
-                    onClick: () => add(definition),
-                  }}
-                  actionDisabled={!availability.ok}
-                  actionTitle={availability.ok ? "添加到首屏" : availability.reason}
-                  title={definition.title}
-                  desc={definition.summary}
-                  settingsAttention={!availability.ok}
-                  schema={hasSettings(definition) ? definition.settings : null}
-                  values={settingValues(definition)}
-                  onSave={saveSetting}
-                  onClear={(key) => saveSetting(key, "")}
-                />
-              );
-            })}
-          </Grid>
-        </React.Fragment>
-      ))}
+      <Grid>
+        {cards.map((card) => {
+          const { definition, instance, added } = card;
+          const size = added
+            ? instance.size
+            : picked[definition.type] || definition.sizes[0];
+          return (
+            <GalleryCard
+              key={definition.type}
+              card={card}
+              size={size}
+              onResize={(next) =>
+                added
+                  ? save(updateInstance(instances, instance.id, { size: next }))
+                  : setPicked({ ...picked, [definition.type]: next })
+              }
+              onAdd={() => add(card)}
+              onRemove={() => drop(card)}
+              onSaveSetting={(key, value) => option.setItem(key, value)}
+              onClearSetting={(key) => option.setItem(key, "")}
+              onSaveConfig={(key, value) =>
+                save(updateInstanceConfig(instances, instance.id, key, value))
+              }
+              onClearConfig={(key) =>
+                save(updateInstanceConfig(instances, instance.id, key, ""))
+              }
+            />
+          );
+        })}
+      </Grid>
       {WIDGETS.length === 0 ? <Empty>还没有可用的组件。</Empty> : null}
 
       <Footer>
