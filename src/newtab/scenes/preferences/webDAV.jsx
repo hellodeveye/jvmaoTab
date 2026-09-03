@@ -126,7 +126,8 @@ const WebDAV = () => {
 
                 <Form.Item label={(<Space>服务器链接配置 <Tag color="error">Beta</Tag></Space>)} >
                     <Space >
-                        <Button type="primary" block onClick={onModalOpen}>
+                        {/* 同 GitHub Gist:入口动作降级为描边按钮,避免 light 主题下的实心黑块 */}
+                        <Button block onClick={onModalOpen}>
                             设置
                         </Button>
                         {webDavURL ? (<Button onClick={data.deleteServeData} >

@@ -2,6 +2,9 @@ import { theme } from "antd";
 
 const APP_COLORS = {
   light: {
+    optionSelectedBg: "rgba(24, 24, 27, 0.065)",
+    optionActiveBg: "rgba(24, 24, 27, 0.04)",
+    optionSelectedColor: "rgba(24, 24, 27, 0.9)",
     primary: "#27272a",
     primaryHover: "#3f3f46",
     primaryActive: "#18181b",
@@ -13,6 +16,9 @@ const APP_COLORS = {
     confirmIconColor: "#71717a",
   },
   dark: {
+    optionSelectedBg: "rgba(255, 255, 255, 0.085)",
+    optionActiveBg: "rgba(255, 255, 255, 0.055)",
+    optionSelectedColor: "rgba(255, 255, 255, 0.88)",
     primary: "#737373",
     primaryHover: "#8a8a8a",
     primaryActive: "#5f5f5f",
@@ -59,6 +65,12 @@ export const getAppTheme = (isDark) => {
       },
       Popconfirm: {
         colorWarning: colors.confirmIconColor,
+      },
+      Select: {
+        optionSelectedBg: colors.optionSelectedBg,
+        optionActiveBg: colors.optionActiveBg,
+        optionSelectedColor: colors.optionSelectedColor,
+        optionSelectedFontWeight: 500,
       },
     },
   };

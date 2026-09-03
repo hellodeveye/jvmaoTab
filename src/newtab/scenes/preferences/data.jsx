@@ -169,7 +169,8 @@ const PreferencesData = () => {
             </Form.Item>
             <Divider />
             <Form.Item>
-                <Button type="primary" block onClick={tools.onExport}>
+                {/* 页面直出的入口动作不用实心 primary,与各设置页按钮保持同层级 */}
+                <Button block onClick={tools.onExport}>
                     数据导出
                 </Button>
                 <Info>导出数据中不会包含已上传的壁纸</Info>

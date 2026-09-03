@@ -70,7 +70,8 @@ const PreferencesAI = () => {
       </Form.Item>
       <Form.Item>
         <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>
+          {/* 页面直出的提交动作不用实心 primary,与「清除」保持同层级 */}
+          <Button htmlType="submit" loading={loading}>
             测试并保存
           </Button>
           {deepseekApiKey ? <Button onClick={onClear}>清除</Button> : null}

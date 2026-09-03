@@ -5,12 +5,13 @@
   },
   "executor": {
     "provider": "postdare",
-    "model": "deepseek-v4-flash",
+    "model": "glm-5.3-flash",
     "thinking": "max"
   },
   "verifier": {
-    "provider": "deepseek",
-    "model": "deepseek-v4-flash"
+    "provider": "postdare",
+    "model": "glm-5.3-flash",
+    "thinking": "medium"
   },
   "escalator": {
     "provider": "postdare",

@@ -40,6 +40,31 @@ const List = styled.div`
   flex-direction: column;
   gap: ${ROW_GAP}px;
   min-height: 0;
+  ${(props) =>
+    props.$expanded
+      ? `
+  flex: none;
+  max-height: ${props.$max}px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: ${props.$scheme.border} transparent;
+  padding-right: 2px;
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background: ${props.$scheme.border};
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: ${props.$scheme.text};
+    opacity: 0.4;
+  }
+  `
+      : ""}
 `;
 
 const Row = styled.div`
@@ -131,13 +156,31 @@ const Remove = styled.button`
   }
 `;
 
-const More = styled.div`
+const More = styled.button`
   height: ${ROW_H}px;
   display: flex;
   align-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
   font-size: ${M.metaFontSize}px;
   opacity: 0.5;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
 `;
+
+/* 展开态:固定视口高度内滚动,看得到全部待办 */
+const expandedCapacity = (size) => {
+  const box = widgetSize(size);
+  return Math.max(
+    4,
+    Math.floor((box.height * 0.6 + ROW_GAP) / (ROW_H + ROW_GAP))
+  );
+};
 
 const Input = styled.input`
   margin-top: ${M.metaGap}px;
@@ -200,6 +243,7 @@ const TodoWidget = observer((props) => {
   /* 行内编辑:一次只编一行,文本放 state 里好拿 */
   const [editingId, setEditingId] = React.useState(null);
   const [editText, setEditText] = React.useState("");
+  const [expanded, setExpanded] = React.useState(false);
   const palette = scheme(definition.scheme);
   const box = widgetSize(instance.size);
 
@@ -285,7 +329,10 @@ const TodoWidget = observer((props) => {
 
   const capacity = listCapacity(instance.size);
   const overflow = items.length > capacity;
-  const visible = overflow ? items.slice(0, capacity - 1) : items;
+  const visible = !overflow || expanded ? items : items.slice(0, capacity - 1);
+  const maxH =
+    expandedCapacity(instance.size) * (ROW_H + ROW_GAP) - ROW_GAP +
+    (overflow ? ROW_H + ROW_GAP : 0);
 
   return (
     <WidgetCard
@@ -304,7 +351,7 @@ const TodoWidget = observer((props) => {
         </CopyBtn>
       }
     >
-      <List>
+      <List $expanded={expanded} $max={maxH} $scheme={palette}>
         {visible.map((item) => (
           <Row key={item.id}>
             <Box
@@ -351,7 +398,18 @@ const TodoWidget = observer((props) => {
             </Remove>
           </Row>
         ))}
-        {overflow ? <More>还有 {items.length - visible.length} 项</More> : null}
+        {overflow ? (
+          <More
+            type="button"
+            title={expanded ? "收起" : "查看全部"}
+            onPointerDown={stopDrag}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded
+              ? "收起"
+              : `还有 ${items.length - visible.length} 项`}
+          </More>
+        ) : null}
         {items.length === 0 ? <More>还没有待办</More> : null}
       </List>
       <Input
