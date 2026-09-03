@@ -249,8 +249,8 @@ const TodoWidget = observer((props) => {
 
   const items = React.useMemo(() => {
     const list = Array.isArray(data?.items) ? data.items : [];
-    // 未完成的排前面：行数有限，先给还要做的事
-    return [...list].sort((a, b) => Number(a.done) - Number(b.done));
+    // 已完成的排前面，未完成的排下面
+    return [...list].sort((a, b) => Number(b.done) - Number(a.done));
   }, [data]);
 
   const undone = items.filter((item) => !item.done);
@@ -305,7 +305,7 @@ const TodoWidget = observer((props) => {
   const cancelEdit = useMemoizedFn(() => setEditingId(null));
 
   const copy = useMemoizedFn(() => {
-    // 复制的是屏幕上的顺序(未完成的在前)
+    // 复制的是屏幕上的顺序(已完成的在前)
     navigator.clipboard
       ?.writeText(todoMarkdown(items))
       .then(() => tools.success("已复制到剪贴板"))
