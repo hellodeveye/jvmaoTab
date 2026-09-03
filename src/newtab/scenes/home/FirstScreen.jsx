@@ -7,13 +7,21 @@ import useStores from "~/hooks/useStores";
 import { getBgFitStyles, HOME_ENTER } from "~/utils";
 import { IconCirclePlus, IconChevronUp } from "@tabler/icons-react";
 import { motion, useAnimationControls } from "framer-motion";
-import { useUpdateEffect, useHover, useCreation } from "ahooks";
+import { useUpdateEffect, useHover, useCreation, useKeyPress, useMemoizedFn } from "ahooks";
 import HomeLinkList from "./HomeLinkList";
 import HomeBgLayer from "./HomeBgLayer";
+import ScreenTrack from "./ScreenTrack";
+import ScreenDots from "./ScreenDots";
 import HomeSearch from "~/components/HomeSearch";
 import Clock from "~/components/Clock";
 import WidgetLayer from "~/widgets/WidgetLayer";
 import Wordmark from "~/components/Wordmark";
+import {
+  SCREEN_COUNT,
+  LINK_SCREENS_KEY,
+  linkGroupsForScreen,
+  normalizeScreen,
+} from "~/screens";
 import _ from "lodash";
 
 
@@ -277,9 +285,76 @@ const FirstScreen = (props) => {
 
   const { token } = useToken();
   const location = useLocation();
-  const [homeGroups, setHomeGroups] = React.useState([]);
   const [showHomeLink, setShowHomeLink] = React.useState(!unlock);
   const [pendingLinksCount, setPendingLinksCount] = React.useState(0);
+
+  // 当前所在屏:0 首屏,1 副屏。新标签页首挂就是 0(返回首屏语义由 Home 的解锁状态管)
+  const [currentScreen, setCurrentScreen] = React.useState(0);
+
+  const goScreen = useMemoizedFn((next) => {
+    setCurrentScreen((cur) => {
+      const target = normalizeScreen(next);
+      return target === cur ? cur : target;
+    });
+  });
+
+  // ←/→ 方向键切屏。焦点在输入框/可编辑元素时不抢按键——
+  // 搜索框的候选导航、便签编辑都依赖这些键
+  useKeyPress(
+    (event) => event.key === "ArrowLeft" || event.key === "ArrowRight",
+    (event) => {
+      if (unlock) return;
+      const el = document.activeElement;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      ) {
+        return;
+      }
+      goScreen(currentScreen + (event.key === "ArrowRight" ? 1 : -1));
+    },
+    { events: ["keydown"] }
+  );
+
+  // 触摸横滑切屏(纵向滑动仍交给浏览器与解锁手势,不相抢)
+  const touchStartRef = React.useRef(null);
+  const onTouchStart = (e) => {
+    const t = e.touches?.[0];
+    touchStartRef.current = t ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const onTouchEnd = (e) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || unlock || home.isBg2) return;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      goScreen(currentScreen + (dx < 0 ? 1 : -1));
+    }
+  };
+
+  // 横向滚轮切屏;纵向滚轮仍走 Home 的解锁手势,互不干涉
+  React.useEffect(() => {
+    const onWheel = (e) => {
+      if (unlock || home.isBg2) return;
+      if (
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) &&
+        Math.abs(e.deltaX) > 20
+      ) {
+        // 最左屏时左滑无事可做,不拦默认行为(如浏览器后退手势)
+        if (currentScreen === 0 && e.deltaX < 0) return;
+        e.preventDefault();
+        goScreen(currentScreen + (e.deltaX > 0 ? 1 : -1));
+      }
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, [unlock, currentScreen, goScreen, home.isBg2]);
+
   const searchPosition = {
     x: "-50%",
     top: isSoBarDown ? "85vh" : "30vh",
@@ -368,6 +443,21 @@ const FirstScreen = (props) => {
     }
   }, [unlock]);
 
+  // 按屏拆分分组键:effectiveKeys 全集 × homeLinkScreens 归属 → 每屏各自的键列表。
+  // 归属变化(移屏)通过键列表签名感知,homeLinkPositions 形状不变,移屏不丢位置
+  const homeScreenKeys = useCreation(
+    () =>
+      Array.from({ length: SCREEN_COUNT }, (_, s) =>
+        linkGroupsForScreen(option.item, effectiveKeys, s)
+      ),
+    [effectiveKeysSig, option.item[LINK_SCREENS_KEY]]
+  );
+  const homeScreenKeysSig = homeScreenKeys.map((k) => k.join(",")).join("|");
+
+  const [screenGroups, setScreenGroups] = React.useState(() =>
+    Array.from({ length: SCREEN_COUNT }, () => [])
+  );
+
   React.useEffect(() => {
     if (unlock) {
       // 管理页期间保持窗格挂载（stickled 状态下 opacity 为 0 不可见），
@@ -375,28 +465,30 @@ const FirstScreen = (props) => {
       return;
     }
     if (effectiveKeys.length && !home.isBg2) {
-      Promise.all(
-        effectiveKeys.map((key) =>
-          link.getLinkByParentId(key).then((childRes) => {
-            const list = Array.isArray(childRes)
-              ? childRes.sort((a, b) => a.sort - b.sort)
-              : [];
-            return {
-              timeKey: key,
-              links: _.take(list, homeLinkMaxNum),
-            };
-          })
-        )
-      ).then((groups) => {
-        setHomeGroups(groups);
-      }).catch((err) => {
-        console.error('Failed to load home links:', err);
-        setHomeGroups([]);
+      const loadKeys = (keys) =>
+        Promise.all(
+          keys.map((key) =>
+            link.getLinkByParentId(key).then((childRes) => {
+              const list = Array.isArray(childRes)
+                ? childRes.sort((a, b) => a.sort - b.sort)
+                : [];
+              return {
+                timeKey: key,
+                links: _.take(list, homeLinkMaxNum),
+              };
+            })
+          )
+        ).catch((err) => {
+          console.error('Failed to load home links:', err);
+          return [];
+        });
+      Promise.all(homeScreenKeys.map(loadKeys)).then((groups) => {
+        setScreenGroups(groups);
       });
     } else {
-      setHomeGroups([]);
+      setScreenGroups(homeScreenKeys.map(() => []));
     }
-  }, [effectiveKeysSig, unlock, home.isBg2, homeLinkMaxNum, link])
+  }, [homeScreenKeysSig, unlock, home.isBg2, homeLinkMaxNum, link])
 
   React.useEffect(() => {
     if (home.isBg2) {
@@ -423,6 +515,15 @@ const FirstScreen = (props) => {
     }, 1000);
     return () => clearInterval(interval);
   }, [link]);
+
+  // 轨道位移:切屏只动这一个 transform,壁纸层在轨道外不动不重载
+  const trackStyle = {
+    transform: `translateX(-${currentScreen * 100}%)`,
+  };
+
+  // 毛玻璃卡片在非活动 pane 里会因轨道平移错位,Frost 靠实测坐标对齐;
+  // currentScreen 变化后 450ms(轨道过渡时长)重测一次,见 WidgetCard 的 useLayoutEffect
+  const settleKey = currentScreen;
 
   return (
     <>
@@ -487,51 +588,94 @@ const FirstScreen = (props) => {
           ) : null}
         </NavRight>
       </HeaderWrap>
-      {showHomeClock ? (
-        <ClockWrap
-          isSoBarDown={isSoBarDown}
-          stickled={unlock}
-        >
-          <ClockContent
-            initial={!unlock ? 'show' : "hidden"}
-            animate={clockWrapController}
-            variants={clockAnimations}
-          >
-            <Clock isSoBarDown={isSoBarDown} />
-          </ClockContent>
-        </ClockWrap>
-      ) : null}
-      <WidgetLayer stickled={unlock || home.isBg2} frostStyle={frostStyle} />
-      {!unlock ? (
-        <SearchWrap
-          initial={{ ...searchPosition, opacity: 0 }}
-          animate={{ ...searchPosition, opacity: 1 }}
-          transition={
-            hasLeftHomeRef.current
-              ? {
-                  duration: HOME_ENTER.duration,
-                  ease: HOME_ENTER.ease,
-                  delay: HOME_ENTER.contentDelay,
-                }
-              : { duration: 0.16, ease: "easeOut" }
-          }
-        >
-          <HomeSearch stickled={false} />
-        </SearchWrap>
-      ) : null}
-      <HomeLinkList
-        homeGroups={homeGroups}
-        isSoBarDown={isSoBarDown}
-        stickled={unlock}
-        showHomeLink={showHomeLink}
-        showGroupTitle={showHomeGroupTitle}
-        frostStyle={frostStyle}
-      />
-      <HomeBgLayer
-        stickled={unlock}
-        homeGroups={homeGroups}
-        isSoBarDown={isSoBarDown}
-        showGroupTitle={showHomeGroupTitle}
+      <ScreenTrack style={trackStyle} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {/* 首屏 pane:时钟 + 搜索框 + 首屏的组件与书签分组 */}
+        <ScreenTrack.Pane>
+          {showHomeClock ? (
+            <ClockWrap
+              isSoBarDown={isSoBarDown}
+              stickled={unlock}
+            >
+              <ClockContent
+                initial={!unlock ? 'show' : "hidden"}
+                animate={clockWrapController}
+                variants={clockAnimations}
+              >
+                <Clock isSoBarDown={isSoBarDown} />
+              </ClockContent>
+            </ClockWrap>
+          ) : null}
+          <WidgetLayer
+            screen={0}
+            stickled={unlock || home.isBg2}
+            frostStyle={frostStyle}
+            settleKey={settleKey}
+          />
+          {!unlock ? (
+            <SearchWrap
+              initial={{ ...searchPosition, opacity: 0 }}
+              animate={{ ...searchPosition, opacity: 1 }}
+              transition={
+                hasLeftHomeRef.current
+                  ? {
+                      duration: HOME_ENTER.duration,
+                      ease: HOME_ENTER.ease,
+                      delay: HOME_ENTER.contentDelay,
+                    }
+                  : { duration: 0.16, ease: "easeOut" }
+              }
+            >
+              <HomeSearch stickled={false} />
+            </SearchWrap>
+          ) : null}
+          <HomeLinkList
+            key="home-pane-0"
+            homeGroups={screenGroups[0]}
+            isSoBarDown={isSoBarDown}
+            stickled={unlock}
+            showHomeLink={showHomeLink}
+            showGroupTitle={showHomeGroupTitle}
+            frostStyle={frostStyle}
+            settleKey={settleKey}
+          />
+          <HomeBgLayer
+            stickled={unlock}
+            homeGroups={screenGroups[0]}
+            isSoBarDown={isSoBarDown}
+            showGroupTitle={showHomeGroupTitle}
+          />
+        </ScreenTrack.Pane>
+        {/* 副屏 pane:只有副屏的组件与书签分组,没有时钟与搜索框 */}
+        <ScreenTrack.Pane>
+          <WidgetLayer
+            screen={1}
+            stickled={unlock || home.isBg2}
+            frostStyle={frostStyle}
+            settleKey={settleKey}
+          />
+          <HomeLinkList
+            key="home-pane-1"
+            homeGroups={screenGroups[1]}
+            isSoBarDown={isSoBarDown}
+            stickled={unlock}
+            showHomeLink={showHomeLink}
+            showGroupTitle={showHomeGroupTitle}
+            frostStyle={frostStyle}
+            settleKey={settleKey}
+          />
+          <HomeBgLayer
+            stickled={unlock}
+            homeGroups={screenGroups[1]}
+            isSoBarDown={isSoBarDown}
+            showGroupTitle={showHomeGroupTitle}
+          />
+        </ScreenTrack.Pane>
+      </ScreenTrack>
+      <ScreenDots
+        count={SCREEN_COUNT}
+        current={currentScreen}
+        onSelect={goScreen}
+        stickled={unlock || home.isBg2}
       />
     </>
   );

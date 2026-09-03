@@ -114,6 +114,8 @@ const WidgetCard = (props) => {
   // 拖拽中不测量（此时 rect 已含 transform），改为在静止坐标上叠加位移。
   // 依赖写成标量：position / box 每次都是新对象，写对象会让每个 resize 帧
   // 都强制同步布局一次。
+  // frost:realign(切屏轨道平移后广播)也重测一次,否则卡片在非活动 pane
+  // 期间量到的坐标带着轨道偏移,毛玻璃会对不上壁纸
   React.useLayoutEffect(() => {
     if (isDragging || !cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
@@ -123,6 +125,16 @@ const WidgetCard = (props) => {
         : { left: rect.left, top: rect.top }
     );
   }, [isDragging, position.right, position.top, box.width, box.height]);
+
+  React.useEffect(() => {
+    const realign = () => {
+      if (isDragging || !cardRef.current) return;
+      const rect = cardRef.current.getBoundingClientRect();
+      setOrigin({ left: rect.left, top: rect.top });
+    };
+    window.addEventListener("frost:realign", realign);
+    return () => window.removeEventListener("frost:realign", realign);
+  }, [isDragging]);
 
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;

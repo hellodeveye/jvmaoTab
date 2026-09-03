@@ -1,6 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react";
 import useStores from "~/hooks/useStores";
+import { SCREEN_COUNT, SCREEN_LABELS, linkGroupScreen, setGroupScreen } from "~/screens";
 import { Input, Tooltip } from "antd";
 import {
   IconPencilMinus,
@@ -26,6 +27,12 @@ const LinkTitle = (props) => {
   const { option, tools } = useStores();
 
   const homeKeys = option.getHomeLinkTimeKeys();
+
+  /** 改分组屏归属:写 homeLinkScreens(稀疏映射,归首屏删键,坐标不动不丢位置) */
+  const assignScreen = (screen) => {
+    const next = setGroupScreen(option.item, item.timeKey, screen);
+    option.setItem("homeLinkScreens", next);
+  };
 
   const onInputBlur = (event) => {
     const value = event.target.value;
@@ -84,6 +91,15 @@ const LinkTitle = (props) => {
       },
     ];
     if (homeKeys.includes(item.timeKey)) {
+      // 已上屏:另一屏没有它才给「移到副屏/首屏」,并保留原有的「从首屏移除」
+      const current = linkGroupScreen(option.item, item.timeKey);
+      const other = current === 0 ? 1 : 0;
+      menuItem.push({
+        label: `移到${SCREEN_LABELS[other]}`,
+        icon: <IconDeviceDesktop />,
+        key: "move-home-screen",
+        onClick: () => assignScreen(other),
+      });
       menuItem.push({
         label: "从首屏移除",
         icon: <IconDeviceDesktopX />,
@@ -93,15 +109,27 @@ const LinkTitle = (props) => {
             "homeLinkTimeKeys",
             homeKeys.filter((k) => k !== item.timeKey)
           );
+          // 一起清掉屏归属,稀疏映射里不留死键
+          assignScreen(0);
         },
       });
     } else {
+      // 未上屏:添加时选目标屏(首屏/副屏)
       menuItem.push({
-        label: "添加到首屏",
+        label: `添加到${SCREEN_LABELS[0]}`,
         icon: <IconDeviceDesktop />,
         key: "add-home",
         onClick: () => {
           option.setItem("homeLinkTimeKeys", [...homeKeys, item.timeKey]);
+        },
+      });
+      menuItem.push({
+        label: `添加到${SCREEN_LABELS[1]}`,
+        icon: <IconDeviceDesktop />,
+        key: "add-home-screen-1",
+        onClick: () => {
+          option.setItem("homeLinkTimeKeys", [...homeKeys, item.timeKey]);
+          assignScreen(1);
         },
       });
     }

@@ -1,4 +1,5 @@
 import { getID } from "~/utils";
+import { normalizeScreen } from "~/screens";
 import { toPlain } from "./plain";
 import { getWidget } from "./registry";
 import { checkAvailable } from "./settings";
@@ -57,12 +58,13 @@ export function withDefinition(instance) {
   return { instance, definition: getWidget(instance.type) };
 }
 
-export function createInstance(definition, size, position) {
+export function createInstance(definition, size, position, screen = 0) {
   return {
     id: getID(),
     type: definition.type,
     size: definition.sizes?.includes(size) ? size : definition.sizes?.[0] || DEFAULT_SIZE,
     position,
+    screen: normalizeScreen(screen),
     config: { ...(definition.defaultConfig || {}) },
   };
 }
@@ -71,11 +73,11 @@ export function createInstance(definition, size, position) {
  * 数据层添加入口:同 type 已存在就原样返回 —— 一种组件只允许一个实例。
  * UI 的禁用只是提示，这里是真正的栅栏:存储直写、未来的新入口都过这里。
  */
-export function addInstance(instances, definition, size, position) {
+export function addInstance(instances, definition, size, position, screen = 0) {
   if (instances.some((instance) => instance.type === definition.type)) {
     return instances;
   }
-  return [...instances.map(toPlain), createInstance(definition, size, position)];
+  return [...instances.map(toPlain), createInstance(definition, size, position, screen)];
 }
 
 export function updateInstance(instances, id, patch) {

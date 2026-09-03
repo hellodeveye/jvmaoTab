@@ -19,6 +19,7 @@ import {
   updateInstance,
   WIDGETS_KEY,
 } from "./instances";
+import { instancesForScreen } from "~/screens";
 import { clampToViewport } from "./layout";
 import { widgetSize } from "./sizes";
 
@@ -28,10 +29,21 @@ import { widgetSize } from "./sizes";
  * 不会牵动其他卡片重渲染。
  */
 const Layer = observer((props) => {
-  const { stickled, frostStyle, instances } = props;
+  const { stickled, frostStyle, instances, settleKey } = props;
   const { option } = useStores();
   const viewport = useLiveViewportSize();
   const justDraggedRef = React.useRef(false);
+
+  // 切屏动画结束后重测毛玻璃对齐:卡片内的 Frost 靠实测视口坐标反向偏移,
+  // 轨道 translateX 之后 getBoundingClientRect 的旧值就错了。
+  // 广播 frost:realign,所有挂着的 WidgetCard 自行重测(避免逐层透传 settleKey)
+  React.useEffect(() => {
+    if (!settleKey) return;
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("frost:realign"));
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [settleKey]);
 
   // 距离小于 5px 不视为拖拽，点击刷新才不会被 dnd-kit 吞掉
   const sensors = useSensors(
@@ -106,7 +118,12 @@ const Layer = observer((props) => {
 /** 一个实例都没有时不挂载下面那层，省掉 resize 监听与各组件的取数状态 */
 const WidgetLayer = (props) => {
   const { option } = useStores();
-  const instances = homeInstances(option.item);
+  const { screen } = props;
+  // 屏归属读取时归一:旧实例没有 screen 字段全部归首屏(0),零迁移
+  const instances = instancesForScreen(
+    homeInstances(option.item),
+    screen
+  );
   if (instances.length === 0) return null;
   return <Layer {...props} instances={instances} />;
 };

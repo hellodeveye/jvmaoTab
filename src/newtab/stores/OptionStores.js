@@ -50,7 +50,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 22;
+const v = 23;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -148,6 +148,11 @@ const updateOptions = {
     // 首屏组件实例：[{ id, type, size, position: { right, top }, config }]
     // 坐标与配置都长在实例上，所以同一种组件可以放多个，见 ~/widgets/instances
     widgets: [],
+  },
+  23: {
+    // 首屏/副屏书签分组的屏归属：{ [timeKey]: 0|1 }，稀疏存储，缺项即首屏；
+    // 读写都走 ~/screens 的 linkGroupScreen / setGroupScreen，旧数据零迁移
+    homeLinkScreens: {},
   },
 }
 

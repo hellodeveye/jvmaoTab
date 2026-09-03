@@ -1,7 +1,8 @@
 import React from "react";
 import { observer } from "mobx-react";
 import styled, { css } from "styled-components";
-import { IconPlus, IconMinus, IconSettings, IconArrowBackUp } from "@tabler/icons-react";
+import { IconPlus, IconMinus, IconSettings, IconArrowBackUp, IconArrowsExchange } from "@tabler/icons-react";
+import { Tooltip } from "antd";
 import useStores from "~/hooks/useStores";
 import { WIDGETS } from "~/widgets/registry";
 import {
@@ -250,6 +251,7 @@ const GalleryCard = (props) => {
     onClearSetting,
     onSaveConfig,
     onClearConfig,
+    onMoveScreen,
   } = props;
   const {
     definition,
@@ -313,9 +315,19 @@ const GalleryCard = (props) => {
             </Round>
           ) : null}
           {added ? (
-            <Round type="button" title="从首屏移除" onClick={onRemove}>
-              <IconMinus size={14} stroke={2} />
-            </Round>
+            <>
+              <Tooltip title={instance.screen ? "移到首屏" : "移到副屏"}>
+                <Round
+                  type="button"
+                  onClick={onMoveScreen}
+                >
+                  <IconArrowsExchange size={13} stroke={1.8} />
+                </Round>
+              </Tooltip>
+              <Round type="button" title="移除" onClick={onRemove}>
+                <IconMinus size={14} stroke={2} />
+              </Round>
+            </>
           ) : (
             <Round type="button" title={addReason} disabled={!canAdd} onClick={onAdd}>
               <IconPlus size={14} stroke={2} />
@@ -343,7 +355,7 @@ const GalleryCard = (props) => {
  * 以后加待办、天气之类的组件都不需要再动这里。
  */
 const WidgetGallery = () => {
-  const { option } = useStores();
+  const { option, tools } = useStores();
   const item = option.item;
   // 读出即去重:存储里留着的重复实例在这里被挡住,视图永远每种类型至多一块
   const dedup = listInstancesWithDedup(item);
@@ -370,6 +382,13 @@ const WidgetGallery = () => {
     const type = card.definition.type;
     const size = picked[type] || card.definition.sizes[0];
     save(addInstance(instances, card.definition, size, placeNewWidget(instances, size)));
+  };
+
+  // 已添加的实例在两屏间移动(新添加默认在首屏,想放副屏就先加再移)
+  const moveToOtherScreen = (card) => {
+    const nextScreen = card.instance.screen ? 0 : 1;
+    save(updateInstance(instances, card.instance.id, { screen: nextScreen }));
+    tools.success(`已移到${nextScreen === 1 ? "副屏" : "首屏"}`);
   };
 
   const drop = async (card) => {
@@ -400,6 +419,7 @@ const WidgetGallery = () => {
               }
               onAdd={() => add(card)}
               onRemove={() => drop(card)}
+              onMoveScreen={() => moveToOtherScreen(card)}
               onSaveSetting={(key, value) => option.setItem(key, value)}
               onClearSetting={(key) => option.setItem(key, "")}
               onSaveConfig={(key, value) =>
