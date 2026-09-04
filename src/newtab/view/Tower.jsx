@@ -10,7 +10,7 @@ import { saveFavicon } from "~/db";
 import { db } from "~/db";
 import _ from "lodash";
 import { normalizePendingLinkUrl } from "~/stores/pendingLinks.mjs";
-import { getAppPrimaryColor, getAppTheme } from "~/theme";
+import { getAppColors, getAppPrimaryColor, getAppTheme } from "~/theme";
 
 const { useToken } = theme;
 
@@ -44,6 +44,8 @@ const Wrap = createGlobalStyle`
   --workspaceNavActive: ${(props) => props.color.workspaceNavActive};
   --workspaceNavActiveText: ${(props) => props.color.workspaceNavActiveText};
   --workspaceIconBg: ${(props) => props.color.workspaceIconBg};
+  --btnPrimaryBorder: ${(props) => props.color.btnPrimaryBorder};
+  --primaryInk: ${(props) => props.color.primaryInk};
 
   background-color: var(--bgColor);
   }
@@ -92,14 +94,14 @@ const LIGHT_WORKSPACE_THEME = {
   homeNavBorderColor: "rgba(255, 255, 255, 0.2)",
   workspaceBackdrop: "#fafaf9",
   workspaceSidebar: "#f3f3f1",
-  workspaceSidebarEdge: "rgba(24, 24, 27, 0.045)",
-  workspaceBorder: "rgba(24, 24, 27, 0.09)",
-  workspaceMuted: "rgba(24, 24, 27, 0.48)",
-  workspaceHover: "rgba(24, 24, 27, 0.04)",
-  workspaceActive: "rgba(24, 24, 27, 0.065)",
-  workspaceNavActive: "rgba(24, 24, 27, 0.075)",
-  workspaceNavActiveText: "rgba(24, 24, 27, 0.9)",
-  workspaceIconBg: "rgba(24, 24, 27, 0.035)",
+  workspaceSidebarEdge: "rgba(28, 25, 23, 0.045)",
+  workspaceBorder: "rgba(28, 25, 23, 0.09)",
+  workspaceMuted: "rgba(28, 25, 23, 0.48)",
+  workspaceHover: "rgba(28, 25, 23, 0.04)",
+  workspaceActive: "rgba(28, 25, 23, 0.065)",
+  workspaceNavActive: "rgba(28, 25, 23, 0.075)",
+  workspaceNavActiveText: "rgba(28, 25, 23, 0.9)",
+  workspaceIconBg: "rgba(28, 25, 23, 0.035)",
 };
 
 function getWorkspaceTheme(isDark, token, homeImgOpacity) {
@@ -108,6 +110,8 @@ function getWorkspaceTheme(isDark, token, homeImgOpacity) {
       ...DARK_WORKSPACE_THEME,
       isDark: true,
       primaryColor: getAppPrimaryColor(true),
+      btnPrimaryBorder: getAppColors(true).primaryBorder,
+      primaryInk: getAppColors(true).primaryText,
       homeImgOpacity: homeImgOpacity || "0.2",
     };
   }
@@ -116,6 +120,8 @@ function getWorkspaceTheme(isDark, token, homeImgOpacity) {
     ...LIGHT_WORKSPACE_THEME,
     isDark: false,
     primaryColor: getAppPrimaryColor(false),
+    btnPrimaryBorder: getAppColors(false).primaryBorder,
+    primaryInk: getAppColors(false).primaryText,
     bgColor: token.colorBgLayout,
     fff: token.colorBgContainer,
     colorText: token.colorText,

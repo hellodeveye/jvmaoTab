@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { App as AntApp, Form, Upload, Divider, Button, Spin, Input } from "antd";
 import "dexie-export-import";
 import { db, DB_NAME } from "~/db";
-import { stripSyncConfigRows } from "~/stores/syncConfig";
+import { stripLocalOptionRows } from "~/stores/localOptions";
 import { IconFileArrowLeft } from "@tabler/icons-react";
 import ConfirmDialogIcon from "~/components/ConfirmDialogIcon";
 import _ from "lodash";
@@ -70,7 +70,8 @@ const PreferencesData = () => {
                 icon: <ConfirmDialogIcon />,
                 content: "点击确认将删除当前所有数据并导入新数据",
                 okText: "确认",
-                okType: "danger",
+                okType: "default",
+                okButtonProps: { danger: true },
                 cancelText: "取消",
                 onOk() {
                     setSpinning(true);
@@ -108,7 +109,7 @@ const PreferencesData = () => {
 
                                 await db.import(blob, { noTransaction: false, clearTables: true, acceptVersionDiff: true, progressCallback });
                                 // 旧导出文件可能带有同步凭据行，导入后剔除
-                                await stripSyncConfigRows(db);
+                                await stripLocalOptionRows(db);
 
                                 setTimeout(() => {
                                     data.deleteServeData();
@@ -169,7 +170,8 @@ const PreferencesData = () => {
             </Form.Item>
             <Divider />
             <Form.Item>
-                <Button type="primary" block onClick={tools.onExport}>
+                {/* 页面直出的入口动作不用实心 primary,与各设置页按钮保持同层级 */}
+                <Button block onClick={tools.onExport}>
                     数据导出
                 </Button>
                 <Info>导出数据中不会包含已上传的壁纸</Info>

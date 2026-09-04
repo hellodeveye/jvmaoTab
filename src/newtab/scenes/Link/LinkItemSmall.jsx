@@ -69,7 +69,7 @@ const LinkItemSmallComponent = (props) => {
         <a
           className="link-a"
           href={url}
-          target={linkOpenSelf ? "_blank" : "_self"}
+          target={linkOpenSelf ? "_blank" : "_self"} rel="noreferrer"
           onClick={handleLinkClick}
           onAuxClick={handleLinkClick}
         ></a>

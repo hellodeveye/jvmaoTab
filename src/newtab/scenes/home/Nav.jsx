@@ -8,6 +8,7 @@ import {
   IconTrashX,
   IconFolder,
   IconSettings,
+  IconLayoutGrid,
   IconArrowsMove,
 } from "@tabler/icons-react";
 import { getID } from "~/utils";
@@ -195,6 +196,11 @@ const Nav = () => {
       ...links,
       { type: "divider" },
       getItem({
+        label: "小组件",
+        key: "widgets",
+        icon: <IconLayoutGrid size={17} stroke={1.4} />,
+      }),
+      getItem({
         label: "首选项",
         key: "preferences",
         icon: <IconSettings size={17} stroke={1.4} />,
@@ -207,6 +213,9 @@ const Nav = () => {
       if (type === "link" && location.pathname === "/") {
         return state.activeKey == key;
       }
+      if (key === "widgets") {
+        return location.pathname === "/widgets";
+      }
       return false;
     },
     [state.activeKey, location.pathname]
@@ -218,6 +227,8 @@ const Nav = () => {
         navigate("/");
         onLinkTitleClick(e.key);
         saveLActiveCache(e);
+      } else if (e.key === "widgets") {
+        navigate("/widgets");
       } else if (e.key === "preferences") {
         tools.preferencesOpen = true;
       } else if (e.key === "Manual" || e.key === "About") {

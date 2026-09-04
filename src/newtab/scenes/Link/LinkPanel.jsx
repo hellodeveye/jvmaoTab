@@ -122,7 +122,8 @@ const LinkPanel = (props) => {
         icon: <ConfirmDialogIcon />,
         content: "即将删除此分组下所有链接",
         okText: "确认",
-        okType: "danger",
+        okType: "default",
+        okButtonProps: { danger: true },
         cancelText: "取消",
         onOk() {
           const itemsToDelete = link.list.filter(

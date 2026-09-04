@@ -316,7 +316,7 @@ const SoSelect = (props) => {
                         return (
                             <Item key={v.key}>
                                 <i>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-grip-vertical"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-grip-vertical"><path stroke="none" d="M0 0h24v24H0z" fill="none" /><path d="M9 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M9 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 5m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M15 19m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /></svg>
                                 </i>
                                 {v.icon ? v.icon : <FavIconIcon size={20} url={v.url} onlyDomain />}
                                 <span>{v.name}</span>
@@ -348,10 +348,10 @@ const SoSelect = (props) => {
                 >
                     <Info>
                         <h4>使用说明</h4>
-                        <p>网址必须包含Query查询参数并以等于号结尾，需要将参数名填写到 "关键字字段名称" 中</p>
+                        <p>网址必须包含Query查询参数并以等于号结尾，需要将参数名填写到 &quot;关键字字段名称&quot; 中</p>
                         <p>示例：谷歌，网址填写 “https://www.google.com/search?q=” , 关键字字段名称填写 “q”</p>
                         <p>添加后如果图标没有显示出来，您可以手动访问添加的页面，比如以上这个只要访问 https://www.google.com/ 即可</p>
-                        <p><strong>搜索框选择器（可选）</strong>：用于实时获取搜索框中的关键词。如果用户在搜索框中修改了关键词，切换搜索引擎时会使用最新的关键词。支持 CSS 选择器，如 "input[name='q']" 或 "#search-input"。如果不填写，将使用 URL 参数中的关键词。</p>
+                        <p><strong>搜索框选择器（可选）</strong>：用于实时获取搜索框中的关键词。如果用户在搜索框中修改了关键词，切换搜索引擎时会使用最新的关键词。支持 CSS 选择器，如 &quot;input[name=&#39;q&#39;]&quot; 或 &quot;#search-input&quot;。如果不填写，将使用 URL 参数中的关键词。</p>
                     </Info>
                     <Form.Item
                         label="网站名称"
@@ -399,9 +399,9 @@ const SoSelect = (props) => {
                     <Form.Item
                         label="搜索框选择器（可选）"
                         name="inputSelector"
-                        tooltip="用于实时获取搜索框中的关键词。支持 CSS 选择器，如 input[name='q'] 或 #search-input。如果不填写，将使用 URL 参数中的关键词。"
+                        tooltip="用于实时获取搜索框中的关键词。支持 CSS 选择器，如 input[name=&#39;q&#39;] 或 #search-input。如果不填写，将使用 URL 参数中的关键词。"
                     >
-                        <Input placeholder="例如：input[name='q'] 或 #search-input" />
+                        <Input placeholder="例如：input[name=&#39;q&#39;] 或 #search-input" />
                     </Form.Item>
 
                     <Form.Item

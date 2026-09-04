@@ -64,7 +64,7 @@ const App = () => {
             return false;
         }
         // 返回 true 表示异步响应（虽然这里是同步的，但保持原有行为）
-        return true;
+        // return true;
       } catch (error) {
         console.error("Error in message listener:", error);
         sendResponse({ html: "" });

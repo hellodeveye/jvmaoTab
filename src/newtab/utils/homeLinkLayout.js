@@ -6,7 +6,7 @@ export const TITLE_H = 22;
 export const DRAG_ID_PREFIX = "home-link-group_";
 const MAX_COLUMNS = 3;
 const HORIZONTAL_MARGIN = 16;
-const VIEW_MARGIN = 8;
+export const VIEW_MARGIN = 8;
 const CANONICAL_VIEWPORT = { width: 1920, height: 1080 };
 
 export function snap(n) {
@@ -252,13 +252,19 @@ export function placeNewGroups(groups, existing) {
   return positions;
 }
 
-export function toPlainPositions(raw) {
+/**
+ * 把存进 option 的坐标表还原成纯对象。
+ * option.item 取回的是 MobX observable，嵌套对象是 Proxy；展开只解一层，
+ * 剩下的 Proxy 写进 IndexedDB 会因无法结构化克隆而整次失败——现象是
+ * 「只有最后拖的那个能存」。轴名可换，是因为首屏卡片按右上角锚定。
+ */
+export function toPlainPositions(raw, axes = ["left", "top"]) {
   if (!raw || typeof raw !== "object") return {};
   const plain = {};
   Object.keys(raw).forEach((k) => {
     const p = raw[k];
-    if (p && typeof p.left === "number" && typeof p.top === "number") {
-      plain[k] = { left: p.left, top: p.top };
+    if (p && axes.every((axis) => Number.isFinite(p[axis]))) {
+      plain[k] = Object.fromEntries(axes.map((axis) => [axis, p[axis]]));
     }
   });
   return plain;

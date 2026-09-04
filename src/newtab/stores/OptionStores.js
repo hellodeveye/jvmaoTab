@@ -12,14 +12,26 @@ import _ from "lodash";
 import {
   getID
 } from "~/utils";
-import { SYNC_CONFIG_KEYS } from "./syncConfig";
+import { migrateSyncConfigFromDb } from "./syncConfigStorage";
 import {
-  loadSyncConfig,
-  saveSyncConfigValue,
-  migrateSyncConfigFromDb,
-  clearSyncConfig,
-} from "./syncConfigStorage";
+  isLocalOptionKey,
+  loadLocalOptions,
+  saveLocalOption,
+  clearLocalOptions,
+  stripLocalOptionRows,
+} from "./localOptions";
 import { browserApi, getLastError } from "@/utils/browser";
+
+/* 组件层重构中作废的键。不清掉的话它们会一直躺在库里，并跟着数据导出与同步走。 */
+const DEAD_OPTION_KEYS = ["aiWidgetPositions", "widgetIds", "widgetPositions"];
+
+async function stripRows(keys) {
+  try {
+    await db.option.where("key").anyOf(keys).delete();
+  } catch (error) {
+    console.error("清理废弃配置失败:", error);
+  }
+}
 
 const localStorageKeys = ['bgType', 'bg2Type', 'bgBase64', 'bg2Base64', 'webdavVersion'];
 
@@ -38,7 +50,7 @@ function sendRuntimeMessage(type, data) {
   });
 }
 
-const v = 19;
+const v = 23;
 const updateOptions = {
   1: {
     errData: '9527'
@@ -130,6 +142,18 @@ const updateOptions = {
     // 首屏分组相对布局锚点的坐标：{ [timeKey]: { left, top } }
     homeLinkPositions: {},
   },
+  20: {},
+  21: {},
+  22: {
+    // 首屏组件实例：[{ id, type, size, position: { right, top }, config }]
+    // 坐标与配置都长在实例上，所以同一种组件可以放多个，见 ~/widgets/instances
+    widgets: [],
+  },
+  23: {
+    // 首屏/副屏书签分组的屏归属：{ [timeKey]: 0|1 }，稀疏存储，缺项即首屏；
+    // 读写都走 ~/screens 的 linkGroupScreen / setGroupScreen，旧数据零迁移
+    homeLinkScreens: {},
+  },
 }
 
 
@@ -162,11 +186,13 @@ export default class OptionStores {
       await db.open();
     }
     try {
-      // 同步凭据存于 chrome.storage.local：先迁移历史数据并清理 db 残留，再载入内存
+      // 凭据类配置存于 chrome.storage.local：先迁移历史数据、清理 db 残留，再载入内存
       await migrateSyncConfigFromDb(db);
-      Object.assign(this.item, await loadSyncConfig());
+      await stripLocalOptionRows(db);
+      await stripRows(DEAD_OPTION_KEYS);
+      Object.assign(this.item, await loadLocalOptions());
     } catch (error) {
-      console.error('同步配置加载失败:', error);
+      console.error('本地配置加载失败:', error);
     }
     setTimeout(() => {
       db.option
@@ -417,9 +443,9 @@ export default class OptionStores {
   }
 
   async setOption(key, value) {
-    // 同步凭据/版本号走 chrome.storage.local，不进 db（不随数据导出，也不触发同步推送）
-    if (SYNC_CONFIG_KEYS.includes(key)) {
-      await saveSyncConfigValue(key, value);
+    // 凭据类配置走 chrome.storage.local，不进 db（不随数据导出，也不触发同步推送）
+    if (isLocalOptionKey(key)) {
+      await saveLocalOption(key, value);
       return;
     }
 
@@ -441,7 +467,7 @@ export default class OptionStores {
         this.item = {
           homeId,
         };
-        clearSyncConfig().catch((err) => console.error('清空同步配置失败:', err));
+        clearLocalOptions().catch((err) => console.error('清空本地配置失败:', err));
         db.option.clear().then(() => {
           this.update(0, homeId);
           setTimeout(() => {

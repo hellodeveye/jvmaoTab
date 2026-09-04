@@ -48,18 +48,19 @@ const options = [
 ]
 
 const content = {
-  wallpaper: <PreferencesBG />,
-  search: <PreferencesSo />,
-  drawer: <PreferencesLink />,
-  data: <PreferencesData />,
-  system: <SystemData />,
-  sync: <Sync />,
+  wallpaper: PreferencesBG,
+  search: PreferencesSo,
+  drawer: PreferencesLink,
+  data: PreferencesData,
+  system: SystemData,
+  sync: Sync,
 }
 
 const Preferences = () => {
   const { tools, option } = useStores();
   const [activeType, setActiveType] = React.useState('wallpaper');
   const { systemTheme } = option.item;
+  const ActivePanel = content[activeType];
 
   const getSystemTheme = React.useCallback(() => {
     if (option && typeof option.getSystemTheme === 'function') {
@@ -98,7 +99,7 @@ const Preferences = () => {
             value={activeType} onChange={setActiveType}
           />
         </NavWrap>
-        {content[activeType] || null}
+        {ActivePanel ? <ActivePanel /> : null}
       </Wrap>
     </Modal>
   );

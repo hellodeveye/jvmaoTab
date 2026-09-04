@@ -10,6 +10,9 @@ import _ from "lodash";
 import useStores from "~/hooks/useStores";
 import useDebounce from "~/hooks/useDebounce";
 import LinkItemSmall from "~/scenes/Link/LinkItemSmall";
+import Frost from "~/components/Frost";
+import StickledLayer from "~/components/StickledLayer";
+import useLiveViewportSize from "~/hooks/useLiveViewportSize";
 import { filterLinkList, HOME_ENTER } from "~/utils";
 import {
   DRAG_ID_PREFIX,
@@ -22,25 +25,11 @@ import {
   fromAnchoredPositions,
   placeNewGroups,
   getLayoutAnchor,
-  getViewportSize,
   snap,
   toPlainPositions,
 } from "~/utils/homeLinkLayout";
 
-const HomeLinkOuter = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: ${(props) => (props.stickled ? "-1" : "50")};
-  /* stickled 时窗格保持挂载（卸载重挂会让下面的过渡失效），
-     用 visibility 而非仅 opacity：一并屏蔽命中测试、Tab 焦点与无障碍树。
-     CSS 对 visibility 过渡有特殊规则——淡出期间保持 visible，淡入时立即可见。
-     时长与缓动同步自壁纸入场，否则返回首页时窗格会先于壁纸出现。 */
-  opacity: ${(props) => (props.stickled ? 0 : 1)};
-  visibility: ${(props) => (props.stickled ? "hidden" : "visible")};
-  transition: opacity ${HOME_ENTER.duration}s ${HOME_ENTER.cssEase},
-    visibility ${HOME_ENTER.duration}s ${HOME_ENTER.cssEase};
-  overflow: hidden;
-  pointer-events: none;
+const HomeLinkOuter = styled(StickledLayer)`
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -56,6 +45,7 @@ const GroupShell = styled.div`
 `;
 
 const HomeLinkNav = styled.div`
+  --frost-tint: var(--homeNavBg);
   position: relative;
   width: fit-content;
   padding: 14px 16px;
@@ -75,45 +65,6 @@ const HomeLinkNav = styled.div`
     .home-link-drag-handle {
       opacity: 1;
     }
-  }
-`;
-
-/* 毛玻璃改为"预模糊壁纸对齐"实现：不用 backdrop-filter（Chromium 分块光栅化
-   会在其他元素动画/重绘时在卡片上闪现横向接缝），而是在卡片内放一个与壁纸
-   同尺寸同 fit 模式的图层（::before），按卡片坐标反向偏移对齐后整体模糊，
-   ::after 叠加着色。图层内容静态，光栅化一次后不会再因页面其他部分重绘而
-   重新采样。壁纸的 url/fit 由 FirstScreen 以 --frost-bg-* CSS 变量提供
-   （挂在 HomeLinkOuter 上）；偏移量 --frost-shift 由卡片渲染处内联提供。
-   卡片只出现在第一壁纸上（bg2 预览时分组会被清空），故无需处理 bg2。 */
-const Frost = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-
-  &::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    transform: var(--frost-shift, none);
-    background-image: var(--frost-bg-image, none);
-    background-repeat: var(--frost-bg-repeat, no-repeat);
-    background-position: var(--frost-bg-position, center center);
-    background-size: var(--frost-bg-size, cover);
-    opacity: var(--homeImgOpacity, 1);
-    filter: saturate(180%) blur(20px);
-  }
-
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background-color: var(--homeNavBg);
   }
 `;
 
@@ -172,7 +123,6 @@ function areGroupPropsEqual(prev, next) {
     prev.zIndex === next.zIndex &&
     prev.title === next.title &&
     prev.isSoBarDown === next.isSoBarDown &&
-    prev.showHomeLink === next.showHomeLink &&
     prev.showGroupTitle === next.showGroupTitle &&
     prev.group?.timeKey === next.group?.timeKey &&
     prev.group?.links === next.group?.links
@@ -184,7 +134,6 @@ const HomeLinkGroupInner = (props) => {
     group,
     title,
     isSoBarDown,
-    showHomeLink,
     showGroupTitle,
     left,
     top,
@@ -239,7 +188,7 @@ const HomeLinkGroupInner = (props) => {
   }
 
   const cols = Math.min(linkList.length, 4);
-  const showTitle = showGroupTitle && title && showHomeLink;
+  const showTitle = showGroupTitle && title;
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;
 
@@ -279,20 +228,19 @@ const HomeLinkGroupInner = (props) => {
           ghostClass="home-link-ghost"
           disabled={isDragging}
         >
-          {showHomeLink &&
-            linkList.map((v) => {
-              if (!v || !v.timeKey) {
-                return null;
-              }
-              return (
-                <div
-                  key={v.timeKey}
-                  style={{ pointerEvents: isDragging ? "none" : "auto" }}
-                >
-                  <LinkItemSmall isSoBarDown={isSoBarDown} {...v} />
-                </div>
-              );
-            })}
+          {linkList.map((v) => {
+            if (!v || !v.timeKey) {
+              return null;
+            }
+            return (
+              <div
+                key={v.timeKey}
+                style={{ pointerEvents: isDragging ? "none" : "auto" }}
+              >
+                <LinkItemSmall isSoBarDown={isSoBarDown} {...v} />
+              </div>
+            );
+          })}
         </ReactSortable>
       </HomeLinkNav>
     </GroupShell>
@@ -303,36 +251,12 @@ const HomeLinkGroup = React.memo(HomeLinkGroupInner, areGroupPropsEqual);
 
 const VIEWPORT_FIT_OPTIONS = { fitVertical: false };
 
-function useLiveViewportSize() {
-  const [viewport, setViewport] = React.useState(getViewportSize);
-
-  React.useEffect(() => {
-    let frameId = null;
-
-    const handleResize = () => {
-      if (frameId !== null) return;
-      frameId = window.requestAnimationFrame(() => {
-        frameId = null;
-        setViewport(getViewportSize());
-      });
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      if (frameId !== null) window.cancelAnimationFrame(frameId);
-    };
-  }, []);
-
-  return viewport;
-}
-
 const HomeLinkListComponent = (props) => {
   const {
     homeGroups,
+    allTimeKeys = [],
     isSoBarDown,
     stickled,
-    showHomeLink,
     showGroupTitle = true,
     frostStyle,
   } = props;
@@ -356,6 +280,10 @@ const HomeLinkListComponent = (props) => {
   validGroupsRef.current = validGroups;
 
   const validKeySig = validGroups.map((g) => g.timeKey).join(",");
+  // 两屏 pane 共享一份 homeLinkPositions。坐标表的生命线是「仍在上屏的分组全集」
+  // (本屏 + 另一屏),而不是本屏自己的分组——否则本屏挂载时的 prune 会把
+  // 另一屏分组的坐标剪掉(移屏后另一 pane 读不到,分组被当新分组重排丢位置)。
+  const allKeysSig = (Array.isArray(allTimeKeys) ? allTimeKeys : []).join(",");
 
   const titleByKey = React.useMemo(() => {
     if (!showGroupTitle) return {};
@@ -383,13 +311,24 @@ const HomeLinkListComponent = (props) => {
 
     const fromStore = toPlainPositions(option.item.homeLinkPositions);
 
-    const missing = validGroups.filter((g) => !fromStore[g.timeKey]);
-
-    const validSet = new Set(validGroups.map((g) => g.timeKey));
+    // 只剪真正不再上屏的死键(全集 = 两屏分组之和);另一屏分组的位置必须保留
+    const keepSet = new Set([
+      ...validGroups.map((g) => g.timeKey),
+      ...(Array.isArray(allTimeKeys) ? allTimeKeys : []),
+    ]);
     const pruned = {};
     Object.keys(fromStore).forEach((k) => {
-      if (validSet.has(k)) pruned[k] = fromStore[k];
+      if (keepSet.has(k)) pruned[k] = fromStore[k];
     });
+
+    // 排布只看本屏。另一屏的坐标同在这张表里,但它们画在另一块画布上:
+    // 既不该让「本屏是不是空的」判成非空(空屏该走默认瀑布流,不是贴着
+    // 另一屏的簇往右排),也不该被当成要避让的邻居。
+    const ownPositions = {};
+    validGroups.forEach((g) => {
+      if (pruned[g.timeKey]) ownPositions[g.timeKey] = pruned[g.timeKey];
+    });
+    const missing = validGroups.filter((g) => !ownPositions[g.timeKey]);
 
     initedKeysRef.current = validKeySig;
     appliedEpochRef.current = layoutEpoch;
@@ -405,7 +344,7 @@ const HomeLinkListComponent = (props) => {
     }
 
     let additions;
-    if (Object.keys(pruned).length === 0) {
+    if (Object.keys(ownPositions).length === 0) {
       additions = computeAnchoredDefaultLayout(
         missing,
         showGroupTitle,
@@ -413,12 +352,13 @@ const HomeLinkListComponent = (props) => {
         viewport
       ).positions;
     } else {
-      additions = placeNewGroups(missing, pruned);
+      additions = placeNewGroups(missing, ownPositions);
     }
 
     persistPositions({ ...pruned, ...additions });
   }, [
     validKeySig,
+    allKeysSig,
     showGroupTitle,
     isSoBarDown,
     layoutEpoch,
@@ -506,7 +446,6 @@ const HomeLinkListComponent = (props) => {
               group={group}
               title={titleByKey[group.timeKey]}
               isSoBarDown={isSoBarDown}
-              showHomeLink={showHomeLink}
               showGroupTitle={showGroupTitle}
               left={pos.left}
               top={pos.top}

@@ -199,7 +199,7 @@ const LinkItemComponent = (props) => {
             className="link-a" 
             tabIndex="-1" 
             href={props.url} 
-            target={linkOpenSelf ? '_blank' : '_self'}
+            target={linkOpenSelf ? '_blank' : '_self'} rel="noreferrer"
             onClick={handleLinkClick}
             onAuxClick={handleLinkClick}
           ></a>

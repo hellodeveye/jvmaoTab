@@ -9,7 +9,7 @@ const Clock = (props) => {
     const [currentTime, setCurrentTime] = useState(dayjs()); // 初始化状态为当前时间
     const [LunarTime, setLunarTime] = useState(); // 初始化状态为当前时间
 
-    const initLunar = () => React.useCallback(() => {
+    const initLunar = React.useCallback(() => {
         const d = Lunar.fromYmd(currentTime.format('YYYY'), currentTime.format('MM'), currentTime.format('DD'))
         console.log('%c [ d ]-11', 'font-size:13px; background:pink; color:#bf2c9f;', d)
         // setLunarTime();

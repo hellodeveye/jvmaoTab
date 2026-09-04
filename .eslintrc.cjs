@@ -7,36 +7,20 @@ module.exports = {
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
+    "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
   ],
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
   },
-  settings: {
-    react: {
-      version: "detect",
-    },
+  // 浏览器扩展环境：chrome（MV3）/ browser（Firefox）由宿主注入，非未定义变量
+  globals: {
+    chrome: "readonly",
+    browser: "readonly",
   },
-  plugins: ["react", "react-hooks"],
-  rules: {
-    // 只做提示，不进行风格类强制约束，避免大规模自动修改
-    "no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
-    "react/prop-types": "off",
-  },
-};
-
-module.exports = {
-  env: { browser: true, es2020: true },
-  extends: [
-    "eslint:recommended",
-    "plugin:react/recommended",
-    "plugin:react/jsx-runtime",
-    "plugin:react-hooks/recommended",
-  ],
-  parserOptions: { ecmaVersion: "latest", sourceType: "module" },
   settings: { react: { version: "18.2" } },
-  plugins: ["react-refresh"],
+  plugins: ["react", "react-hooks", "react-refresh"],
   rules: {
     "react-refresh/only-export-components": "off",
     "react/prop-types": "off",

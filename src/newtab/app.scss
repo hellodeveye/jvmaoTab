@@ -567,7 +567,7 @@ body {
   .ant-modal-content {
     padding: 0;
     background: var(--workspaceBackdrop);
-    box-shadow: 0 18px 54px rgba(24, 24, 27, 0.18);
+    box-shadow: 0 18px 54px rgba(28, 25, 23, 0.18);
   }
 
   .ant-modal-header {
@@ -679,4 +679,28 @@ body {
     opacity: 0.5;
     /* 完全透明 */
   }
+}
+
+/* 主按钮走描边式（透明底），见 theme.js 的 Button 段。
+   antd 的 solid 变体不设 border-color、也没有对应 token，只能补这一条；
+   颜色仍来自 theme.js，经 Tower 挂成 --btnPrimaryBorder。 */
+body .ant-btn.ant-btn-color-primary.ant-btn-variant-solid {
+  border-color: var(--btnPrimaryBorder);
+}
+
+/* 勾选态同样不填实底，见 theme.js 的 Checkbox 段。
+   底色和描边在 antd 里共用 colorPrimary，只能在这里把底色压成透明。
+   后两条是 hover 态——antd 会把描边设成 transparent，得接回来。
+   都加 body 前缀：antd 的样式是运行时注入的，注入顺序不保证，
+   靠多一级选择器稳定压过去，而不是赌先后。 */
+body .ant-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner,
+body
+  .ant-checkbox-wrapper:not(.ant-checkbox-wrapper-disabled):hover
+  .ant-checkbox-checked:not(.ant-checkbox-disabled)
+  .ant-checkbox-inner,
+body
+  .ant-checkbox-wrapper-checked:not(.ant-checkbox-wrapper-disabled):hover
+  .ant-checkbox-inner {
+  background-color: transparent;
+  border-color: var(--primaryInk);
 }

@@ -65,7 +65,8 @@ const GitHubGist = () => {
                         </div>
                     ),
                     okText: "确认",
-                    okType: "danger",
+                    okType: "default",
+                    okButtonProps: { danger: true },
                     cancelText: "取消",
                     onOk: async () => {
                         await saveConfig(token, gistId);
@@ -103,7 +104,8 @@ const GitHubGist = () => {
             >
                 <Form.Item label={(<Space>GitHub Gist 配置 <Tag color="green">开发者友好</Tag></Space>)}>
                     <Space>
-                        <Button type="primary" block onClick={() => setOpen(true)}>
+                        {/* 打开弹窗是低风险入口动作,不用 primary 实心黑,与「清空」保持同层级 */}
+                        <Button block onClick={() => setOpen(true)}>
                             设置
                         </Button>
                         {githubToken ? (
