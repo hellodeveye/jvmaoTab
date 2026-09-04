@@ -78,7 +78,8 @@ const WebDAV = () => {
                         </div>
                     ),
                     okText: "确认",
-                    okType: "danger",
+                    okType: "default",
+                    okButtonProps: { danger: true },
                     cancelText: "取消",
                     onOk() {
                         handleChange(v);

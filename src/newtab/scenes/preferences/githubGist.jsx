@@ -65,7 +65,8 @@ const GitHubGist = () => {
                         </div>
                     ),
                     okText: "确认",
-                    okType: "danger",
+                    okType: "default",
+                    okButtonProps: { danger: true },
                     cancelText: "取消",
                     onOk: async () => {
                         await saveConfig(token, gistId);

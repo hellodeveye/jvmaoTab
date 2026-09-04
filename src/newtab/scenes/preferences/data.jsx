@@ -70,7 +70,8 @@ const PreferencesData = () => {
                 icon: <ConfirmDialogIcon />,
                 content: "点击确认将删除当前所有数据并导入新数据",
                 okText: "确认",
-                okType: "danger",
+                okType: "default",
+                okButtonProps: { danger: true },
                 cancelText: "取消",
                 onOk() {
                     setSpinning(true);

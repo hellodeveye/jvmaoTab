@@ -166,7 +166,7 @@ const TabList = (props) => {
       icon: <ConfirmDialogIcon />,
       content: "即将添加全部网页到新分组",
       okText: "确认",
-      okType: "danger",
+      okType: "primary",
       cancelText: "取消",
       onOk() {
         link.addPanelToLinkItemEmitter.emit(list);
