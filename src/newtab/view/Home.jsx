@@ -30,7 +30,15 @@ const EscMessageIcon = styled(IconChevronUp)`
 const Wrap = styled.div`
   width: 100%;
   height: 100dvh;
-  overflow: hidden;
+  /* 必须是 clip 不是 hidden:管理页(Main)只被 translateY(100vh) 挪到屏幕下方,
+     DOM 还在也还能拿焦点,而 transform 的区域会计入可滚动溢出。hidden 建立的
+     仍是一个可被程序滚动的容器 —— 焦点一落进 Main(弹窗关闭后交还焦点、Tab、
+     方向键的默认滚动都会),浏览器就自动把它滚进视野:管理页露出来了,可 unlock
+     还是 false,首屏那些浮层(屏幕指示点等)因此不会隐藏。
+     clip 只裁剪、不建立滚动容器,这条路就断了。 */
+  overflow: clip;
+  /* 首屏那些绝对定位浮层的包含块:不写就落到初始包含块上,和这里的内容脱节 */
+  position: relative;
 `;
 
 const Main = styled(motion.main)`
