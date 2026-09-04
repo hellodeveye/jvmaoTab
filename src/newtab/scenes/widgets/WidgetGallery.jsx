@@ -47,7 +47,7 @@ const PageTitle = styled.h1`
    真正像 Mac 桌面那样随手摆是首屏的事(见首屏拖拽),不是这页。 */
 const PageDesc = styled.div`
   font-size: 12px;
-  color: var(--workspaceMuted, rgba(24, 24, 27, 0.48));
+  color: var(--workspaceMuted, rgba(28, 25, 23, 0.48));
   line-height: 1.6;
 `;
 
@@ -215,7 +215,7 @@ const BackTitle = styled.div`
 /* 背面同时有类型设置(如密钥)和此卡设置(如清单名)时,用小标题分开 */
 const BackLabel = styled.div`
   font-size: 11px;
-  color: var(--workspaceMuted, rgba(24, 24, 27, 0.48));
+  color: var(--workspaceMuted, rgba(28, 25, 23, 0.48));
   margin: 12px 0 6px;
 
   & + * {
@@ -225,7 +225,7 @@ const BackLabel = styled.div`
 
 const Empty = styled.div`
   font-size: 12px;
-  color: var(--workspaceMuted, rgba(24, 24, 27, 0.48));
+  color: var(--workspaceMuted, rgba(28, 25, 23, 0.48));
 `;
 
 /* 底部说明:整页最底、居中。卡片变多页面变高时它自然跟到内容末尾 */
@@ -234,7 +234,7 @@ const Footer = styled.div`
   padding-top: 32px;
   font-size: 11px;
   text-align: center;
-  color: var(--workspaceMuted, rgba(24, 24, 27, 0.48));
+  color: var(--workspaceMuted, rgba(28, 25, 23, 0.48));
   line-height: 1.6;
 `;
 
