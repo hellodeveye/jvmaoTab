@@ -16,6 +16,7 @@ import {
   computeAnchoredDefaultLayout,
   filterRenderableGroups,
 } from "~/utils/homeLinkLayout";
+import { SCREEN_LABELS, normalizeScreen } from "~/screens";
 
 /** 首屏壁纸交互层：右键菜单 + 长按切换第二壁纸（原便签层职责中的非便签部分） */
 const Wrap = styled.div`
@@ -36,7 +37,10 @@ const HomeBgLayerComponent = (props) => {
     homeGroups = [],
     isSoBarDown,
     showGroupTitle = true,
+    screen = 0,
   } = props;
+  // 每屏各有一层壁纸交互层,「整理」只重排右键所在这一屏的分组
+  const screenLabel = SCREEN_LABELS[normalizeScreen(screen)];
   const { home, option, tools } = useStores();
   const { modal } = AntApp.useApp();
   const parentRef = React.useRef(null);
@@ -47,9 +51,9 @@ const HomeBgLayerComponent = (props) => {
 
   const organizeHomeGroups = React.useCallback(() => {
     modal.confirm({
-      title: "确认整理首屏分组？",
+      title: `确认整理${screenLabel}分组？`,
       icon: <ConfirmDialogIcon icon={IconLayoutGrid} />,
-      content: "将重新排列所有首屏分组，当前自定义位置会丢失。",
+      content: `将重新排列${screenLabel}的所有分组，这一屏的自定义位置会丢失。`,
       okText: "整理",
       okType: "primary",
       cancelText: "取消",
@@ -60,7 +64,7 @@ const HomeBgLayerComponent = (props) => {
           isSoBarDown
         );
         try {
-          await tools.resetHomeLinkLayout(layout.positions);
+          await tools.applyHomeLinkLayout(layout.positions);
           if (layout.overflow) {
             tools.messageApi.warning(
               "整理完成，但分组过多，当前窗口无法完全容纳"
@@ -74,7 +78,7 @@ const HomeBgLayerComponent = (props) => {
         }
       },
     });
-  }, [isSoBarDown, modal, showGroupTitle, tools, validHomeGroups]);
+  }, [isSoBarDown, modal, screenLabel, showGroupTitle, tools, validHomeGroups]);
 
   const onContextMenu = React.useCallback(
     (e) => {

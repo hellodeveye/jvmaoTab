@@ -123,7 +123,6 @@ function areGroupPropsEqual(prev, next) {
     prev.zIndex === next.zIndex &&
     prev.title === next.title &&
     prev.isSoBarDown === next.isSoBarDown &&
-    prev.showHomeLink === next.showHomeLink &&
     prev.showGroupTitle === next.showGroupTitle &&
     prev.group?.timeKey === next.group?.timeKey &&
     prev.group?.links === next.group?.links
@@ -135,7 +134,6 @@ const HomeLinkGroupInner = (props) => {
     group,
     title,
     isSoBarDown,
-    showHomeLink,
     showGroupTitle,
     left,
     top,
@@ -190,7 +188,7 @@ const HomeLinkGroupInner = (props) => {
   }
 
   const cols = Math.min(linkList.length, 4);
-  const showTitle = showGroupTitle && title && showHomeLink;
+  const showTitle = showGroupTitle && title;
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;
 
@@ -230,20 +228,19 @@ const HomeLinkGroupInner = (props) => {
           ghostClass="home-link-ghost"
           disabled={isDragging}
         >
-          {showHomeLink &&
-            linkList.map((v) => {
-              if (!v || !v.timeKey) {
-                return null;
-              }
-              return (
-                <div
-                  key={v.timeKey}
-                  style={{ pointerEvents: isDragging ? "none" : "auto" }}
-                >
-                  <LinkItemSmall isSoBarDown={isSoBarDown} {...v} />
-                </div>
-              );
-            })}
+          {linkList.map((v) => {
+            if (!v || !v.timeKey) {
+              return null;
+            }
+            return (
+              <div
+                key={v.timeKey}
+                style={{ pointerEvents: isDragging ? "none" : "auto" }}
+              >
+                <LinkItemSmall isSoBarDown={isSoBarDown} {...v} />
+              </div>
+            );
+          })}
         </ReactSortable>
       </HomeLinkNav>
     </GroupShell>
@@ -257,9 +254,9 @@ const VIEWPORT_FIT_OPTIONS = { fitVertical: false };
 const HomeLinkListComponent = (props) => {
   const {
     homeGroups,
+    allTimeKeys = [],
     isSoBarDown,
     stickled,
-    showHomeLink,
     showGroupTitle = true,
     frostStyle,
   } = props;
@@ -283,6 +280,10 @@ const HomeLinkListComponent = (props) => {
   validGroupsRef.current = validGroups;
 
   const validKeySig = validGroups.map((g) => g.timeKey).join(",");
+  // 两屏 pane 共享一份 homeLinkPositions。坐标表的生命线是「仍在上屏的分组全集」
+  // (本屏 + 另一屏),而不是本屏自己的分组——否则本屏挂载时的 prune 会把
+  // 另一屏分组的坐标剪掉(移屏后另一 pane 读不到,分组被当新分组重排丢位置)。
+  const allKeysSig = (Array.isArray(allTimeKeys) ? allTimeKeys : []).join(",");
 
   const titleByKey = React.useMemo(() => {
     if (!showGroupTitle) return {};
@@ -310,13 +311,24 @@ const HomeLinkListComponent = (props) => {
 
     const fromStore = toPlainPositions(option.item.homeLinkPositions);
 
-    const missing = validGroups.filter((g) => !fromStore[g.timeKey]);
-
-    const validSet = new Set(validGroups.map((g) => g.timeKey));
+    // 只剪真正不再上屏的死键(全集 = 两屏分组之和);另一屏分组的位置必须保留
+    const keepSet = new Set([
+      ...validGroups.map((g) => g.timeKey),
+      ...(Array.isArray(allTimeKeys) ? allTimeKeys : []),
+    ]);
     const pruned = {};
     Object.keys(fromStore).forEach((k) => {
-      if (validSet.has(k)) pruned[k] = fromStore[k];
+      if (keepSet.has(k)) pruned[k] = fromStore[k];
     });
+
+    // 排布只看本屏。另一屏的坐标同在这张表里,但它们画在另一块画布上:
+    // 既不该让「本屏是不是空的」判成非空(空屏该走默认瀑布流,不是贴着
+    // 另一屏的簇往右排),也不该被当成要避让的邻居。
+    const ownPositions = {};
+    validGroups.forEach((g) => {
+      if (pruned[g.timeKey]) ownPositions[g.timeKey] = pruned[g.timeKey];
+    });
+    const missing = validGroups.filter((g) => !ownPositions[g.timeKey]);
 
     initedKeysRef.current = validKeySig;
     appliedEpochRef.current = layoutEpoch;
@@ -332,7 +344,7 @@ const HomeLinkListComponent = (props) => {
     }
 
     let additions;
-    if (Object.keys(pruned).length === 0) {
+    if (Object.keys(ownPositions).length === 0) {
       additions = computeAnchoredDefaultLayout(
         missing,
         showGroupTitle,
@@ -340,12 +352,13 @@ const HomeLinkListComponent = (props) => {
         viewport
       ).positions;
     } else {
-      additions = placeNewGroups(missing, pruned);
+      additions = placeNewGroups(missing, ownPositions);
     }
 
     persistPositions({ ...pruned, ...additions });
   }, [
     validKeySig,
+    allKeysSig,
     showGroupTitle,
     isSoBarDown,
     layoutEpoch,
@@ -433,7 +446,6 @@ const HomeLinkListComponent = (props) => {
               group={group}
               title={titleByKey[group.timeKey]}
               isSoBarDown={isSoBarDown}
-              showHomeLink={showHomeLink}
               showGroupTitle={showGroupTitle}
               left={pos.left}
               top={pos.top}

@@ -285,7 +285,6 @@ const FirstScreen = (props) => {
 
   const { token } = useToken();
   const location = useLocation();
-  const [showHomeLink, setShowHomeLink] = React.useState(!unlock);
   const [pendingLinksCount, setPendingLinksCount] = React.useState(0);
 
   // 当前所在屏:0 首屏,1 副屏。新标签页首挂就是 0(返回首屏语义由 Home 的解锁状态管)
@@ -435,11 +434,9 @@ const FirstScreen = (props) => {
   useUpdateEffect(() => {
     if (unlock) {
       hasLeftHomeRef.current = true;
-      setShowHomeLink(false);
       clockWrapController.start("hidden");
     } else {
       clockWrapController.start("show");
-      setShowHomeLink(true);
     }
   }, [unlock]);
 
@@ -520,10 +517,6 @@ const FirstScreen = (props) => {
   const trackStyle = {
     transform: `translateX(-${currentScreen * 100}%)`,
   };
-
-  // 毛玻璃卡片在非活动 pane 里会因轨道平移错位,Frost 靠实测坐标对齐;
-  // currentScreen 变化后 450ms(轨道过渡时长)重测一次,见 WidgetCard 的 useLayoutEffect
-  const settleKey = currentScreen;
 
   return (
     <>
@@ -609,7 +602,6 @@ const FirstScreen = (props) => {
             screen={0}
             stickled={unlock || home.isBg2}
             frostStyle={frostStyle}
-            settleKey={settleKey}
           />
           {!unlock ? (
             <SearchWrap
@@ -631,14 +623,14 @@ const FirstScreen = (props) => {
           <HomeLinkList
             key="home-pane-0"
             homeGroups={screenGroups[0]}
+            allTimeKeys={effectiveKeys}
             isSoBarDown={isSoBarDown}
             stickled={unlock}
-            showHomeLink={showHomeLink}
             showGroupTitle={showHomeGroupTitle}
             frostStyle={frostStyle}
-            settleKey={settleKey}
           />
           <HomeBgLayer
+            screen={0}
             stickled={unlock}
             homeGroups={screenGroups[0]}
             isSoBarDown={isSoBarDown}
@@ -651,19 +643,18 @@ const FirstScreen = (props) => {
             screen={1}
             stickled={unlock || home.isBg2}
             frostStyle={frostStyle}
-            settleKey={settleKey}
           />
           <HomeLinkList
             key="home-pane-1"
             homeGroups={screenGroups[1]}
+            allTimeKeys={effectiveKeys}
             isSoBarDown={isSoBarDown}
             stickled={unlock}
-            showHomeLink={showHomeLink}
             showGroupTitle={showHomeGroupTitle}
             frostStyle={frostStyle}
-            settleKey={settleKey}
           />
           <HomeBgLayer
+            screen={1}
             stickled={unlock}
             homeGroups={screenGroups[1]}
             isSoBarDown={isSoBarDown}
