@@ -110,31 +110,21 @@ const WidgetCard = (props) => {
     [setNodeRef]
   );
 
-  // 毛玻璃图层要按卡片在视口中的坐标反向对齐，所以得知道真实 left/top。
-  // 拖拽中不测量（此时 rect 已含 transform），改为在静止坐标上叠加位移。
+  // 毛玻璃图层要按卡片在本屏内的坐标反向对齐，所以得知道真实 left/top。
+  // 量 offsetLeft/offsetTop 而不是 getBoundingClientRect：前者相对定位父级
+  // （StickledLayer，与本屏 pane 同框）且不含 transform，于是切屏时轨道的整体
+  // 平移、拖拽时卡片自身的位移都量不进来——位移单独叠加（见 --frost-shift）。
   // 依赖写成标量：position / box 每次都是新对象，写对象会让每个 resize 帧
   // 都强制同步布局一次。
-  // frost:realign(切屏轨道平移后广播)也重测一次,否则卡片在非活动 pane
-  // 期间量到的坐标带着轨道偏移,毛玻璃会对不上壁纸
   React.useLayoutEffect(() => {
-    if (isDragging || !cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
+    const node = cardRef.current;
+    if (!node) return;
     setOrigin((prev) =>
-      prev.left === rect.left && prev.top === rect.top
+      prev.left === node.offsetLeft && prev.top === node.offsetTop
         ? prev
-        : { left: rect.left, top: rect.top }
+        : { left: node.offsetLeft, top: node.offsetTop }
     );
-  }, [isDragging, position.right, position.top, box.width, box.height]);
-
-  React.useEffect(() => {
-    const realign = () => {
-      if (isDragging || !cardRef.current) return;
-      const rect = cardRef.current.getBoundingClientRect();
-      setOrigin({ left: rect.left, top: rect.top });
-    };
-    window.addEventListener("frost:realign", realign);
-    return () => window.removeEventListener("frost:realign", realign);
-  }, [isDragging]);
+  }, [position.right, position.top, box.width, box.height]);
 
   const tx = transform?.x || 0;
   const ty = transform?.y || 0;

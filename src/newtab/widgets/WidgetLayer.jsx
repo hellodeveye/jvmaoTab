@@ -29,21 +29,10 @@ import { widgetSize } from "./sizes";
  * 不会牵动其他卡片重渲染。
  */
 const Layer = observer((props) => {
-  const { stickled, frostStyle, instances, settleKey } = props;
+  const { stickled, frostStyle, instances } = props;
   const { option } = useStores();
   const viewport = useLiveViewportSize();
   const justDraggedRef = React.useRef(false);
-
-  // 切屏动画结束后重测毛玻璃对齐:卡片内的 Frost 靠实测视口坐标反向偏移,
-  // 轨道 translateX 之后 getBoundingClientRect 的旧值就错了。
-  // 广播 frost:realign,所有挂着的 WidgetCard 自行重测(避免逐层透传 settleKey)
-  React.useEffect(() => {
-    if (!settleKey) return;
-    const timer = setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("frost:realign"));
-    }, 450);
-    return () => clearTimeout(timer);
-  }, [settleKey]);
 
   // 距离小于 5px 不视为拖拽，点击刷新才不会被 dnd-kit 吞掉
   const sensors = useSensors(
