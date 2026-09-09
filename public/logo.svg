@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
-  <!-- App tile (full bleed) -->
-  <rect width="512" height="512" rx="116" fill="#18181b"/>
-  <!-- T: top bar -->
-  <rect x="76" y="104" width="244" height="88" rx="44" fill="#ffffff"/>
-  <!-- T: stem -->
-  <rect x="154" y="104" width="88" height="316" rx="44" fill="#ffffff"/>
-  <!-- Accent dot -->
-  <circle cx="404" cy="148" r="50" fill="#60a5fa"/>
+  <!-- Overlapping bookmarks: earth behind, fire in front -->
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <path
+    d="M 164 100 H 256 C 281 100 300 119 300 144 V 388 L 210 330 L 120 388 V 144 C 120 119 139 100 164 100 Z"
+    fill="#a96f42"
+  />
+  <path
+    d="M 256 172 H 348 C 373 172 392 191 392 216 V 452 L 302 394 L 212 452 V 216 C 212 191 231 172 256 172 Z"
+    fill="#d9533d"
+  />
 </svg>
