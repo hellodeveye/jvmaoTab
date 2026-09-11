@@ -2,7 +2,7 @@
 
 极简的浏览器新标签页：壁纸 + 搜索打底，常用链接与轻量小组件随手可及。Chrome / Firefox（Manifest V3）。
 
-![NewTab 首屏](./docs/images/newtab-home.webp)
+![NewTab 首屏](./docs/images/newtab-home.png)
 
 ## 特性
 
